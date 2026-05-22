@@ -1,0 +1,10 @@
+{
+  "name": "Remix: AgriLens AI",
+  "description": "AI-Based Real-Time Crop Image Analytics System for crop health monitoring and PMFBY insurance support.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
