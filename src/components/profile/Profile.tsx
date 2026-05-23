@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Phone, Mail, Landmark, CreditCard, Building2, MapPin, Camera, Save, LogOut, ArrowLeft, ShieldCheck, UserCircle, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,13 @@ interface ProfileProps {
 }
 
 export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, onLogout, onBack }) => {
+  const MOBILE_REGEX = /^\d{10}$/;
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+  const PASSWORD_MASK = '********';
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [formData, setFormData] = useState({
     name: user?.name || '',
     mobile: user?.mobile || '',
@@ -32,11 +39,33 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
     bankType: user?.bankType || 'Commercial',
     townName: user?.townName || '',
     villageName: user?.villageName || '',
-    password: user?.password || '',
     newPassword: ''
   });
 
+  useEffect(() => {
+    setFormData({
+      name: user?.name || '',
+      mobile: user?.mobile || '',
+      email: user?.email || '',
+      aadhar: user?.aadhar || user?.registrationData?.aadhar || '',
+      bankName: user?.bankName || user?.registrationData?.bankName || '',
+      branchName: user?.branchName || user?.registrationData?.branchName || '',
+      bankAcc: user?.bankAcc || user?.registrationData?.bankAcc || '',
+      state: user?.state || user?.registrationData?.state || '',
+      district: user?.district || user?.registrationData?.district || '',
+      photo: user?.photo || user?.registrationData?.photo || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80',
+      bankType: user?.bankType || user?.registrationData?.bankType || 'Commercial',
+      townName: user?.townName || user?.registrationData?.townName || '',
+      villageName: user?.villageName || user?.registrationData?.villageName || '',
+      newPassword: ''
+    });
+  }, [user]);
+
   const [isEditing, setIsEditing] = useState(false);
+  const [isPasswordTouched, setIsPasswordTouched] = useState(false);
+  const [isPasswordConfirmed, setIsPasswordConfirmed] = useState(false);
+  const [passwordStatusMessage, setPasswordStatusMessage] = useState('');
+  const hasPendingPasswordChange = isEditing && formData.newPassword !== '' && !isPasswordConfirmed;
 
   const t: Record<string, any> = {
     en: {
@@ -64,7 +93,23 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
       editTitle: "Edit Profile",
       cancelEdit: "Cancel Editing",
       updateDetails: "Update Details",
-      discardChanges: "Discard Changes"
+      discardChanges: "Discard Changes",
+      notProvided: "Not provided",
+      changePassword: "Change Password",
+      enterNewPassword: "Enter new password",
+      confirmPassword: "Confirm",
+      changePasswordPlaceholder: "Change the password",
+      passwordConfirmRequired: "Please confirm the password change before saving.",
+      passwordConfirmed: "Password change confirmed.",
+      invalidMobile: "Mobile number must be exactly 10 digits.",
+      invalidEmail: "Please enter a valid email address.",
+      invalidPassword: "Password must be 8+ characters with uppercase, lowercase, number, and special character.",
+      bankType: "Bank Type",
+      bankTypePlaceholder: "e.g. Commercial, Rural, Cooperative",
+      townName: "Town Name",
+      townPlaceholder: "Enter Town Name",
+      villageName: "Village Name",
+      villagePlaceholder: "Enter Village Name"
     },
     hi: {
       title: "उपयोगकर्ता प्रोफ़ाइल",
@@ -314,14 +359,93 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
   const content = t[language] || t['en'];
 
   const handleSave = () => {
+    const trimmedMobile = formData.mobile.trim();
+    const trimmedEmail = formData.email.trim();
+
+    if (!MOBILE_REGEX.test(trimmedMobile)) {
+      setSaveError(content.invalidMobile || t.en.invalidMobile);
+      return;
+    }
+
+    if (trimmedEmail && !EMAIL_REGEX.test(trimmedEmail)) {
+      setSaveError(content.invalidEmail || t.en.invalidEmail);
+      return;
+    }
+
+    if (formData.newPassword && !isPasswordConfirmed) {
+      setPasswordStatusMessage(content.passwordConfirmRequired || t.en.passwordConfirmRequired);
+      return;
+    }
+
     const updatedData = {
       ...formData,
-      password: formData.newPassword ? formData.newPassword : formData.password,
+      mobile: trimmedMobile,
+      email: trimmedEmail,
+      password: formData.newPassword ? formData.newPassword : undefined,
       newPassword: ''
     };
-    onUpdateUser(updatedData);
-    setFormData(updatedData);
-    setIsEditing(false);
+
+    const persistProfile = async () => {
+      setIsSaving(true);
+      setSaveError('');
+
+      try {
+        const userIdentifier = user?._id || user?.id || user?.mobile;
+        if (!userIdentifier) {
+          throw new Error('Missing user identifier. Please sign in again.');
+        }
+
+        const response = await fetch(`/api/auth/profile/${encodeURIComponent(userIdentifier)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedData)
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload?.error || payload?.message || 'Profile update failed');
+        }
+
+        onUpdateUser(payload.user);
+        setFormData((current) => ({ ...current, ...payload.user, newPassword: '' }));
+        setIsEditing(false);
+        setIsPasswordTouched(false);
+        setIsPasswordConfirmed(false);
+        setPasswordStatusMessage('');
+      } catch (error: any) {
+        setSaveError(error?.message || 'Profile update failed');
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+    void persistProfile();
+  };
+
+  const handlePasswordConfirm = () => {
+    if (!hasPendingPasswordChange) return;
+
+    if (!PASSWORD_REGEX.test(formData.newPassword)) {
+      setPasswordStatusMessage(content.invalidPassword || t.en.invalidPassword);
+      setIsPasswordConfirmed(false);
+      return;
+    }
+
+    setIsPasswordConfirmed(true);
+    setIsPasswordTouched(false);
+    setPasswordStatusMessage(content.passwordConfirmed || t.en.passwordConfirmed);
+  };
+
+  const handleEditToggle = () => {
+    setIsEditing(prev => {
+      const next = !prev;
+      setIsPasswordTouched(false);
+      setIsPasswordConfirmed(false);
+      setPasswordStatusMessage('');
+      setFormData(current => ({ ...current, newPassword: '' }));
+
+      return next;
+    });
   };
 
   return (
@@ -360,10 +484,10 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
                 </div>
                 <div className="w-full space-y-3 pt-4 font-medium text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="h-4 w-4" /> {formData.mobile || 'Not provided'}
+                    <Phone className="h-4 w-4" /> {formData.mobile || content.notProvided || t.en.notProvided}
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-4 w-4" /> {formData.email || 'Not provided'}
+                    <Mail className="h-4 w-4" /> {formData.email || content.notProvided || t.en.notProvided}
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4" /> {formData.district}, {formData.state}
@@ -377,7 +501,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
           <div className="flex-1 flex flex-col gap-4">
             {/* Edit Profile Card Button Box */}
             <div 
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={handleEditToggle}
               className="flex-[4] min-h-[160px] bg-gradient-to-br from-white to-neutral-50 text-black border border-neutral-200 hover:border-black rounded-[24px] flex flex-col items-center justify-center p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer select-none group relative overflow-hidden"
             >
               {/* Premium glare effect */}
@@ -458,15 +582,46 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{language === 'hi' ? 'पासवर्ड बदलें' : 'Change Password'}</Label>
-                  <Input 
-                    type="password"
-                    disabled={!isEditing} 
-                    placeholder={isEditing ? (language === 'hi' ? 'नया पासवर्ड लिखें' : 'Enter new password') : '••••••••'} 
-                    value={isEditing ? formData.newPassword : ''} 
-                    onChange={(e) => setFormData({...formData, newPassword: e.target.value})}
-                    className="bg-muted/30 font-mono"
-                  />
+                  <Label>{content.changePassword || t.en.changePassword}</Label>
+                  <div className="flex items-center gap-3">
+                    <Input 
+                      type="password"
+                      disabled={!isEditing} 
+                      placeholder={isEditing && isPasswordTouched && !isPasswordConfirmed ? (content.changePasswordPlaceholder || t.en.changePasswordPlaceholder) : ''} 
+                      value={!isEditing || !isPasswordTouched || isPasswordConfirmed ? PASSWORD_MASK : formData.newPassword} 
+                      onFocus={() => {
+                        if (!isEditing) return;
+                        if (!isPasswordTouched && !isPasswordConfirmed) {
+                          setIsPasswordTouched(true);
+                          setPasswordStatusMessage('');
+                          setFormData(prev => ({ ...prev, newPassword: '' }));
+                        }
+                      }}
+                      onChange={(e) => {
+                        if (!isEditing || !isPasswordTouched || isPasswordConfirmed) return;
+                        setIsPasswordTouched(true);
+                        setIsPasswordConfirmed(false);
+                        setPasswordStatusMessage('');
+                        setFormData(prev => ({ ...prev, newPassword: e.target.value }));
+                      }}
+                      className={`flex-1 bg-muted/30 font-mono tracking-widest ${isEditing ? 'opacity-100' : 'opacity-60'}`}
+                    />
+                    {hasPendingPasswordChange && (
+                      <Button
+                        type="button"
+                        onClick={handlePasswordConfirm}
+                        size="sm"
+                        className="h-10 shrink-0 rounded-full border border-emerald-400/30 bg-emerald-500/90 px-4 font-semibold text-white shadow-[0_10px_22px_rgba(16,185,129,0.22)] hover:bg-emerald-400"
+                      >
+                        {content.confirmPassword || t.en.confirmPassword}
+                      </Button>
+                    )}
+                  </div>
+                  {passwordStatusMessage && (
+                    <p className={`text-xs font-medium ${passwordStatusMessage.includes('confirmed') ? 'text-emerald-500' : 'text-amber-500'}`}>
+                      {passwordStatusMessage}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -496,13 +651,13 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{language === 'hi' ? 'बैंक का प्रकार' : 'Bank Type'}</Label>
+                    <Label>{content.bankType || t.en.bankType}</Label>
                     <Input 
                       disabled={!isEditing} 
                       value={formData.bankType} 
                       onChange={(e) => setFormData({...formData, bankType: e.target.value})}
                       className="bg-muted/30"
-                      placeholder="e.g. Commercial, Rural, Cooperative"
+                      placeholder={content.bankTypePlaceholder || t.en.bankTypePlaceholder}
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
@@ -547,23 +702,23 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{language === 'hi' ? 'शहर / कस्बा' : 'Town Name'}</Label>
+                    <Label>{content.townName || t.en.townName}</Label>
                     <Input 
                       disabled={!isEditing} 
                       value={formData.townName} 
                       onChange={(e) => setFormData({...formData, townName: e.target.value})}
                       className="bg-muted/30"
-                      placeholder="Enter Town Name"
+                      placeholder={content.townPlaceholder || t.en.townPlaceholder}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>{language === 'hi' ? 'गांव का नाम' : 'Village Name'}</Label>
+                    <Label>{content.villageName || t.en.villageName}</Label>
                     <Input 
                       disabled={!isEditing} 
                       value={formData.villageName} 
                       onChange={(e) => setFormData({...formData, villageName: e.target.value})}
                       className="bg-muted/30"
-                      placeholder="Enter Village Name"
+                      placeholder={content.villagePlaceholder || t.en.villagePlaceholder}
                     />
                   </div>
                 </div>
@@ -573,10 +728,12 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
                 <div className="pt-6">
                   <Button 
                     onClick={handleSave} 
+                    disabled={isSaving}
                     className="w-full bg-white hover:bg-neutral-100 text-black dark:text-black dark:bg-white dark:hover:bg-neutral-100 font-extrabold py-6 gap-2 text-lg border border-neutral-200 shadow-[0_4px_20px_rgba(0,0,0,0.15)] rounded-2xl cursor-pointer"
                   >
-                    <Save className="h-5 w-5 text-black" /> {content.saveChanges}
+                    <Save className="h-5 w-5 text-black" /> {isSaving ? 'Saving...' : content.saveChanges}
                   </Button>
+                  {saveError && <p className="mt-3 text-sm font-medium text-red-500">{saveError}</p>}
                 </div>
               )}
             </CardContent>

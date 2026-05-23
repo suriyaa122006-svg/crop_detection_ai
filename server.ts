@@ -5,6 +5,96 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRoutes from "./routes/auth";
+import CropReport from "./models/cropReport";
+
+type CropReportInput = {
+  cropName?: unknown;
+  cropType?: unknown;
+  detectedCondition?: unknown;
+  condition?: unknown;
+  confidenceScore?: unknown;
+  confidence?: unknown;
+  damageSeverity?: unknown;
+  damage?: unknown;
+  treatmentSuggestions?: unknown;
+  suggestions?: unknown;
+  diagnosticType?: unknown;
+  status?: unknown;
+  capturedAt?: unknown;
+  fileName?: unknown;
+  imageName?: unknown;
+  cropImage?: unknown;
+  cropImageUrl?: unknown;
+  pmfbyClaimFiled?: unknown;
+};
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, numericValue));
+}
+
+function deriveDamageSeverity(condition: string, currentSeverity: number): number {
+  const normalizedCondition = condition.toLowerCase();
+  const highRiskKeywords = ["severe", "rot", "blight", "infestation"];
+  const hasHighRiskKeyword = highRiskKeywords.some((keyword) => normalizedCondition.includes(keyword));
+
+  if (hasHighRiskKeyword) {
+    return Math.max(currentSeverity, 85);
+  }
+
+  if (currentSeverity > 0) {
+    return currentSeverity;
+  }
+
+  return 5;
+}
+
+function deriveStatus(condition: string, damageSeverity: number): string {
+  const normalizedCondition = condition.toLowerCase();
+  const hasCriticalKeyword = ["severe", "rot", "blight", "infestation"].some((keyword) =>
+    normalizedCondition.includes(keyword)
+  );
+
+  if (hasCriticalKeyword || damageSeverity > 60) {
+    return "Critical";
+  }
+
+  if (damageSeverity >= 15) {
+    return "Monitor";
+  }
+
+  return "Healthy";
+}
+
+function normalizeCropReportInput(report: CropReportInput) {
+  const detectedCondition = String(report.detectedCondition || report.condition || "Unknown condition").trim();
+  const confidenceScore = clampNumber(report.confidenceScore ?? report.confidence, 0, 100, 0);
+  const initialSeverity = clampNumber(report.damageSeverity ?? report.damage, 0, 100, 5);
+  const damageSeverity = deriveDamageSeverity(detectedCondition, initialSeverity);
+  const status = deriveStatus(detectedCondition, damageSeverity);
+
+  return {
+    cropName: String(report.cropName || report.cropType || "Unknown crop").trim(),
+    detectedCondition,
+    confidenceScore,
+    damageSeverity,
+    treatmentSuggestions: Array.isArray(report.treatmentSuggestions)
+      ? report.treatmentSuggestions.map((item) => String(item)).filter(Boolean)
+      : Array.isArray(report.suggestions)
+        ? report.suggestions.map((item) => String(item)).filter(Boolean)
+        : [],
+    diagnosticType: String(report.diagnosticType || report.cropType || "Crop Analysis").trim(),
+    status,
+    capturedAt: report.capturedAt ? new Date(String(report.capturedAt)) : new Date(),
+    fileName: String(report.fileName || report.imageName || "image.jpg").trim(),
+    cropImage: String(report.cropImage || report.cropImageUrl || "").trim() || undefined,
+    pmfbyClaimFiled: Boolean(report.pmfbyClaimFiled),
+  };
+}
 
 // Load environment variables from .env
 dotenv.config();
@@ -84,6 +174,49 @@ async function startServer() {
     } catch (error: any) {
       console.error("Error analyzing crop image in server API:", error);
       res.status(500).json({ error: error?.message || "Failed to analyze crop image" });
+    }
+  });
+
+  app.post("/api/cropreports", async (req, res) => {
+    try {
+      const report = req.body?.report;
+      if (!report || typeof report !== "object") {
+        return res.status(400).json({ error: "Missing crop report data" });
+      }
+
+      const normalizedReport = normalizeCropReportInput(report as CropReportInput);
+      const savedReport = await CropReport.create(normalizedReport);
+
+      res.status(201).json({ message: "Crop report saved successfully", report: savedReport });
+    } catch (error: any) {
+      console.error("Error saving crop report:", error);
+      res.status(500).json({ error: error?.message || "Failed to save crop report" });
+    }
+  });
+
+  app.get("/api/cropreports", async (_req, res) => {
+    try {
+      const reports = await CropReport.find({}).sort({ capturedAt: -1, createdAt: -1 }).lean();
+      res.json(reports);
+    } catch (error: any) {
+      console.error("Error fetching crop reports:", error);
+      res.status(500).json({ error: error?.message || "Failed to fetch crop reports" });
+    }
+  });
+
+  app.delete("/api/cropreports/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deletedReport = await CropReport.findByIdAndDelete(id);
+
+      if (!deletedReport) {
+        return res.status(404).json({ error: "Crop report not found" });
+      }
+
+      res.json({ message: "Crop report deleted successfully", id });
+    } catch (error: any) {
+      console.error("Error deleting crop report:", error);
+      res.status(500).json({ error: error?.message || "Failed to delete crop report" });
     }
   });
 

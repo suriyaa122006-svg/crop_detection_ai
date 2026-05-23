@@ -88,13 +88,13 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
     }
 
     if (!formData.mobile) {
-      newErrors.mobile = language === 'en' ? 'Mobile number is required' : (t[language]?.placeholders?.mobile || 'Mobile number is required');
+      newErrors.mobile = (t[language]?.validation?.mobileRequired) || 'Mobile number is required';
     } else {
       const mobileRegex = /^[6-9]\d{9}$/;
       if (formData.mobile.length !== 10) {
-        newErrors.mobile = language === 'en' ? 'Mobile number must be exactly 10 digits' : 'मोबाइल नंबर ठीक 10 अंकों का होना चाहिए';
+        newErrors.mobile = (t[language]?.validation?.mobileLength) || 'Mobile number must be exactly 10 digits';
       } else if (!mobileRegex.test(formData.mobile)) {
-        newErrors.mobile = language === 'en' ? 'Please enter a valid Indian mobile number' : 'कृपया एक वैध मोबाइल नंबर दर्ज करें';
+        newErrors.mobile = (t[language]?.validation?.mobileInvalid) || 'Please enter a valid Indian mobile number';
       }
     }
 
@@ -118,14 +118,50 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validate()) {
       setIsSubmitting(true);
-      // Simulate API call
-      setTimeout(() => {
+      const { confirmPassword, ...registrationData } = formData;
+
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            ...registrationData,
+            aadharVerified: isAadharVerified
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setErrors(prev => ({
+            ...prev,
+            submit: data.message || data.error || 'Registration failed'
+          }));
+          return;
+        }
+
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+
+        onLogin(data.user || registrationData);
+        setActiveTab('home');
+      } catch {
+        setErrors(prev => ({
+          ...prev,
+          submit: 'Unable to save user details right now. Please try again.'
+        }));
+      } finally {
         setIsSubmitting(false);
-        onLogin(formData);
-      }, 2000);
+      }
     }
   };
 
@@ -733,6 +769,33 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
   };
 
   const content = t[language] || t['en'];
+  const localizedUi: Record<string, Record<string, string>> = {
+    en: {
+      yes: 'YES',
+      no: 'NO',
+      ifscCode: 'IFSC Code',
+      ifscPlaceholder: 'Enter IFSC Code (e.g. SBIN0001234)',
+      townName: 'Town Name',
+      townPlaceholder: 'Enter Town Name',
+      villageName: 'Village Name',
+      villagePlaceholder: 'Enter Village Name',
+      pincode: 'Pincode',
+      pincodePlaceholder: 'Enter 6-digit Pincode'
+    },
+    hi: {
+      yes: 'हाँ',
+      no: 'नहीं',
+      ifscCode: 'आईएफएससी कोड',
+      ifscPlaceholder: 'IFSC कोड दर्ज करें (जैसे SBIN0001234)',
+      townName: 'शहर / कस्बा',
+      townPlaceholder: 'शहर / कस्बा दर्ज करें',
+      villageName: 'गांव का नाम',
+      villagePlaceholder: 'गांव का नाम दर्ज करें',
+      pincode: 'पिनकोड',
+      pincodePlaceholder: '6 अंकों का पिनकोड दर्ज करें'
+    }
+  };
+  const ui = localizedUi[language] || localizedUi.en;
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-8">
@@ -759,7 +822,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.stakeholder} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, stakeholder: value }));
+                    setFormData(prev => ({ ...prev, stakeholder: value || '' }));
                     setErrors(prev => ({ ...prev, stakeholder: '' }));
                   }}
                 >
@@ -782,7 +845,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.bankType} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, bankType: value }));
+                    setFormData(prev => ({ ...prev, bankType: value || '' }));
                     setErrors(prev => ({ ...prev, bankType: '' }));
                   }}
                 >
@@ -805,7 +868,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.userCategory} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, userCategory: value }));
+                    setFormData(prev => ({ ...prev, userCategory: value || '' }));
                     setErrors(prev => ({ ...prev, userCategory: '' }));
                   }}
                 >
@@ -828,7 +891,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.state} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, state: value }));
+                    setFormData(prev => ({ ...prev, state: value || '' }));
                     setErrors(prev => ({ ...prev, state: '' }));
                   }}
                 >
@@ -851,7 +914,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.district} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, district: value }));
+                    setFormData(prev => ({ ...prev, district: value || '' }));
                     setErrors(prev => ({ ...prev, district: '' }));
                   }}
                 >
@@ -877,7 +940,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                       onChange={() => setFormData(prev => ({ ...prev, searchByIFSC: 'YES' }))}
                       className="accent-primary h-4 w-4" 
                     />
-                    <span className="text-sm font-semibold">YES</span>
+                    <span className="text-sm font-semibold">{ui.yes}</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input 
@@ -887,7 +950,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                       onChange={() => setFormData(prev => ({ ...prev, searchByIFSC: 'NO' }))}
                       className="accent-primary h-4 w-4" 
                     />
-                    <span className="text-sm font-semibold">NO</span>
+                    <span className="text-sm font-semibold">{ui.no}</span>
                   </label>
                 </div>
               </div>
@@ -895,10 +958,10 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
               {formData.searchByIFSC === 'YES' && (
                 <div className="space-y-2 col-span-1 md:col-span-2">
                   <Label className="flex gap-1 font-bold">
-                    IFSC Code <span className="text-destructive">*</span>
+                    {ui.ifscCode} <span className="text-destructive">*</span>
                   </Label>
                   <Input 
-                    placeholder="Enter IFSC Code (e.g. SBIN0001234)" 
+                    placeholder={ui.ifscPlaceholder}
                     value={formData.ifscCode}
                     onChange={(e) => setFormData(prev => ({ ...prev, ifscCode: e.target.value.toUpperCase() }))}
                   />
@@ -907,10 +970,10 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
 
               <div className="space-y-2">
                 <Label className="flex gap-1 font-bold">
-                  Town Name <span className="text-destructive">*</span>
+                  {ui.townName} <span className="text-destructive">*</span>
                 </Label>
                 <Input 
-                  placeholder="Enter Town Name" 
+                  placeholder={ui.townPlaceholder}
                   value={formData.townName}
                   onChange={(e) => setFormData(prev => ({ ...prev, townName: e.target.value }))}
                 />
@@ -918,10 +981,10 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
 
               <div className="space-y-2">
                 <Label className="flex gap-1 font-bold">
-                  Village Name <span className="text-destructive">*</span>
+                  {ui.villageName} <span className="text-destructive">*</span>
                 </Label>
                 <Input 
-                  placeholder="Enter Village Name" 
+                  placeholder={ui.villagePlaceholder}
                   value={formData.villageName}
                   onChange={(e) => setFormData(prev => ({ ...prev, villageName: e.target.value }))}
                 />
@@ -929,10 +992,10 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
 
               <div className="space-y-2">
                 <Label className="flex gap-1 font-bold">
-                  Pincode <span className="text-destructive">*</span>
+                  {ui.pincode} <span className="text-destructive">*</span>
                 </Label>
                 <Input 
-                  placeholder="Enter 6-digit Pincode" 
+                  placeholder={ui.pincodePlaceholder}
                   value={formData.pincode}
                   maxLength={6}
                   onChange={(e) => setFormData(prev => ({ ...prev, pincode: e.target.value.replace(/\D/g, '') }))}
@@ -946,7 +1009,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.bankName} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, bankName: value }));
+                    setFormData(prev => ({ ...prev, bankName: value || '' }));
                     setErrors(prev => ({ ...prev, bankName: '' }));
                   }}
                 >
@@ -968,7 +1031,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.branchName} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, branchName: value }));
+                    setFormData(prev => ({ ...prev, branchName: value || '' }));
                     setErrors(prev => ({ ...prev, branchName: '' }));
                   }}
                 >
@@ -1001,7 +1064,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.personalTitle} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, personalTitle: value }));
+                    setFormData(prev => ({ ...prev, personalTitle: value || '' }));
                     setErrors(prev => ({ ...prev, personalTitle: '' }));
                   }}
                 >
@@ -1177,13 +1240,17 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
             </Button>
             <Button 
               size="lg" 
-              className="px-8 bg-primary hover:bg-primary/90 text-white font-bold"
+              className="px-8 bg-primary hover:bg-primary/90 text-black font-bold"
               onClick={handleSubmit}
               disabled={isSubmitting}
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : content.create}
             </Button>
           </div>
+
+          {errors.submit && (
+            <p className="text-sm font-medium text-destructive text-right">{errors.submit}</p>
+          )}
 
           <div className="pt-4 text-center">
             <p className="text-sm text-muted-foreground">

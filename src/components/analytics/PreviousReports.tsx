@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LanguageCode } from '@/src/lib/languages';
+import { CropReportCard } from './CropReportCard.tsx';
+import { CropReport, RiskLevel } from '../types.ts';
 
 interface PreviousReportsProps {
   language: LanguageCode;
@@ -20,6 +22,7 @@ interface ReportItem {
   id: string;
   date: string;
   cropName: string;
+  cropImage?: string;
   disease: string;
   damage: number;
   confidence: number;
@@ -28,83 +31,20 @@ interface ReportItem {
   recommendations: string[];
 }
 
-const INITIAL_REPORTS: ReportItem[] = [
-  {
-    id: 'rep-1',
-    date: '2026-05-18',
-    cropName: 'Tomato',
-    disease: 'Early Blight',
-    damage: 42,
-    confidence: 96,
-    status: 'Moderate Risk',
-    details: 'Broad brown spots with concentric rings resembling targetboards on older leaves first.',
-    recommendations: [
-      'Apply copper-based fungicides immediately.',
-      'Improve air circulation by pruning lower stakes.',
-      'Avoid overhead watering to minimize leaf wetness.'
-    ]
-  },
-  {
-    id: 'rep-2',
-    date: '2026-05-15',
-    cropName: 'Rice',
-    disease: 'Leaf Blast',
-    damage: 25,
-    confidence: 91,
-    status: 'Moderate Risk',
-    recommendations: [
-      'Avoid excessive nitrogen fertilizer application.',
-      'Maintain adequate water depth in paddy fields.',
-      'Use certified disease-free seeds next season.'
-    ],
-    details: 'Spindle-shaped lesions with grayish centers and dark borders scattered across the canopy.'
-  },
-  {
-    id: 'rep-3',
-    date: '2026-05-12',
-    cropName: 'Potato',
-    disease: 'Healthy Crop',
-    damage: 5,
-    confidence: 98,
-    status: 'Healthy',
-    recommendations: [
-      'No critical treatment required.',
-      'Continue regular soil nutrition levels.',
-      'Monitor weekly for late blight conditions.'
-    ],
-    details: 'Vigorous crop growth with zero signature infestation symptoms detected.'
-  },
-  {
-    id: 'rep-4',
-    date: '2026-05-09',
-    cropName: 'Cotton',
-    disease: 'Wilt Infestation',
-    damage: 68,
-    confidence: 89,
-    status: 'Severe Damage',
-    recommendations: [
-      'Quarantine infected area immediately to prevent spreading.',
-      'Apply biological control agents like Trichoderma viride.',
-      'Adopt crop rotation for at least 3 years.'
-    ],
-    details: 'Severe yellowing, wilting and necrosis across extensive leaf area.'
-  },
-  {
-    id: 'rep-5',
-    date: '2026-05-04',
-    cropName: 'Sugarcane',
-    disease: 'Red Rot',
-    damage: 15,
-    confidence: 94,
-    status: 'Healthy',
-    recommendations: [
-      'Select resistant cultivars for upcoming cycles.',
-      'Set proper drainage channels.',
-      'Remove and destroy scattered infected plants.'
-    ],
-    details: 'Minimal symptoms present. Controlled biological agents are working stably.'
-  }
-];
+interface StoredCropReport {
+  _id?: string;
+  cropName: string;
+  detectedCondition: string;
+  confidenceScore: number;
+  damageSeverity: number;
+  treatmentSuggestions: string[];
+  diagnosticType: string;
+  status: string;
+  capturedAt: string;
+  fileName: string;
+  cropImage?: string;
+  pmfbyClaimFiled: boolean;
+}
 
 export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBack }) => {
   const t: Record<string, any> = {
@@ -140,7 +80,26 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterHealthy: "Healthy",
       filterDamaged: "Damaged",
       filterHighRisk: "High Risk",
-      filterModRisk: "Moderate Risk"
+      filterModRisk: "Moderate Risk",
+      loadingReports: "Loading crop reports...",
+      unableToLoadReports: "Unable to load reports",
+      accurateSuffix: "Accurate",
+      loadError: "Failed to load reports",
+      capturedOn: "Captured",
+      bioDiagnostic: "Bio-Spectrum Diagnostic",
+      damageSeverityCard: "Damage Severity",
+      aiValidationConfidence: "AI Validation Confidence",
+      riskHighLabel: "Critical Priority",
+      riskModerateLabel: "Warning / Monitor",
+      riskLowLabel: "Low Severity",
+      riskHealthyLabel: "Healthy / Active",
+      urgentAction: "Urgent threat: direct action required",
+      monitorMessage: "Persistent layout: observe closely",
+      stableMessage: "Subcritical status: stable",
+      modelValidationActive: "Diagnostic model validation is active",
+      detailedDiagnosticFile: "Detailed Diagnostic File",
+      pdfExport: "PDF Export",
+      deleteReportAria: "Delete diagnostic report"
     },
     hi: {
       title: "पिछले फसल विवरण",
@@ -174,7 +133,25 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterHealthy: "स्वस्थ",
       filterDamaged: "प्रभावित",
       filterHighRisk: "उच्च जोखिम",
-      filterModRisk: "मध्यम जोखिम"
+      filterModRisk: "मध्यम जोखिम",
+      loadingReports: "फसल रिपोर्ट लोड हो रही हैं...",
+      unableToLoadReports: "रिपोर्ट लोड नहीं हो सकीं",
+      accurateSuffix: "सटीक",
+      capturedOn: "कैप्चर किया गया",
+      bioDiagnostic: "बायो-स्पेक्ट्रम निदान",
+      damageSeverityCard: "क्षति की गंभीरता",
+      aiValidationConfidence: "एआई सत्यापन सटीकता",
+      riskHighLabel: "गंभीर प्राथमिकता",
+      riskModerateLabel: "चेतावनी / निगरानी",
+      riskLowLabel: "कम गंभीरता",
+      riskHealthyLabel: "स्वस्थ / सक्रिय",
+      urgentAction: "तत्काल खतरा: तुरंत कार्रवाई आवश्यक",
+      monitorMessage: "निरंतर जोखिम: नज़दीकी निगरानी रखें",
+      stableMessage: "स्थिर स्थिति: नियंत्रण में",
+      modelValidationActive: "निदान मॉडल सत्यापन सक्रिय है",
+      detailedDiagnosticFile: "विस्तृत निदान फ़ाइल",
+      pdfExport: "पीडीएफ निर्यात",
+      deleteReportAria: "निदान रिपोर्ट हटाएं"
     },
     pa: {
       title: "ਪਿਛਲੀਆਂ ਫ਼ਸਲਾਂ ਦੀਆਂ ਰਿਪੋਰਟਾਂ",
@@ -452,14 +429,27 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
 
   const content = t[language] || t['en'];
 
+  const [reports, setReports] = useState<ReportItem[]>([]);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'All' | 'Healthy' | 'Damaged' | 'High Risk' | 'Moderate Risk'>('All');
+  const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
+  const [loadingReports, setLoadingReports] = useState(true);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+
   const translateText = (text: string): string => {
     const dictionary: Record<string, Record<string, string>> = {
       // crops
       "Tomato": { hi: "टमाटर", pa: "ਟਮਾਟਰ", mr: "टोमॅटो", bn: "টমেটো", gu: "ટામેટાં", ta: "தக்காளி", te: "టమోటా", kn: "ಟೊಮೆಟೊ", ml: "തക്കാളി" },
       "Rice": { hi: "धान (चावल)", pa: "ਝੋਨਾ (ਚੌਲ)", mr: "भात (तांदूळ)", bn: "ধান (চাল)", gu: "ડાંગર (ચોખા)", ta: "நெல் (அரிசி)", te: "వరి (బియ్యం)", kn: "ಭತ್ತ (ಅಕ್ಕಿ)", ml: "നെല്ല് (അരി)" },
+      "Corn": { hi: "मक्का", pa: "ਮੱਕੀ", mr: "मका", bn: "ভুট্টা", gu: "મકાઈ", ta: "மக்காச்சோளம்", te: "మొక్కజొన్న", kn: "ಮೆಕ್ಕೆಜೋಳ", ml: "ചോളം" },
+      "Corn (Maize)": { hi: "मक्का (मकई)", pa: "ਮੱਕੀ", mr: "मका", bn: "ভুট্টা", gu: "મકાઈ", ta: "மக்காச்சோளம்", te: "మొక్కజొన్న", kn: "ಮೆಕ್ಕೆಜೋಳ", ml: "ചോളം" },
+      "Maize": { hi: "मक्का", pa: "ਮੱਕੀ", mr: "मका", bn: "ভুট্টা", gu: "મકાઈ", ta: "மக்காச்சோளம்", te: "మొక్కజొన్న", kn: "ಮೆಕ್ಕೆಜೋಳ", ml: "ചോളം" },
       "Potato": { hi: "आलू", pa: "ਆਲੂ", mr: "बटाटा", bn: "আলু", gu: "બટાટા", ta: "உருளைக்கிழங்கு", te: "బంగాళాదుంప", kn: "ಆಲೂಗಡ್ಡೆ", ml: "ഉരുളക്കിഴങ്ങ്" },
       "Cotton": { hi: "कपास", pa: "ਕਪਾਹ", mr: "कापूस", bn: "তুলা", gu: "કપાસ", ta: "பருத்தி", te: "పత్తి", kn: "ಹತ್ತಿ", ml: "പരുത്തി" },
       "Sugarcane": { hi: "गन्ना", pa: "ਗੰਨਾ", mr: "ऊस", bn: "আখ", gu: "શેરડી", ta: "கரும்பு", te: "చెరకు", kn: "ಕಬ್ಬು", ml: "കരിമ്പ്" },
+      "Mustard": { hi: "सरसों", pa: "ਸਰ੍ਹੋਂ", mr: "मोहरी", bn: "সরিষা", gu: "રાઈ", ta: "கடுகு", te: "ఆవాలు", kn: "ಸಾಸಿವೆ", ml: "കടുക്" },
+      "Soyabean": { hi: "सोयाबीन", pa: "ਸੋਇਆਬੀਨ", mr: "सोयाबीन", bn: "সয়াবিন", gu: "સોયાબીન", ta: "சோயாபீன்", te: "సోయాబీన్", kn: "ಸೋಯಾಬೀನ್", ml: "സോയാബീൻ" },
+      "Groundnut": { hi: "मूंगफली", pa: "ਮੂੰਗਫਲੀ", mr: "भुईमूग", bn: "চিনাবাদাম", gu: "મગફળી", ta: "நிலக்கடலை", te: "వేరుశనగ", kn: "ಕಡಲೆಕಾಯಿ", ml: "നിലക്കടല" },
 
       // diseases
       "Early Blight": { hi: "अगेती झुलसा", pa: "ਅਗੇਤੀ ਝੁਲਸ ਰੋਗ", mr: "अगेती करपा", bn: "আগেতি ধসা রোগ", gu: "આગોતરો સુકારો", ta: "ஆரம்ப கருகல் நோய்", te: "ఆకులు మాడిపోవు తెగులు", kn: "ಮುಂಗಾರು ಕರಕಲು ರೋಗ", ml: "മുരടിപ്പ് രോഗം" },
@@ -467,6 +457,11 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       "Healthy Crop": { hi: "स्वस्थ फसल", pa: "ਸਿਹਤਮੰਦ ਫ਼ਸਲ", mr: "निरोगी पीक", bn: "সুস্থ ফসল", gu: "સ્વસ્થ પાક", ta: "ஆரோக்கியமான பயிர்", te: "ఆరోగ్యకరమైన పంట", kn: "ಆರೋಗ್ಯಕರ ಬೆಳೆ", ml: "ആരോഗ്യമുള്ള വിള" },
       "Wilt Infestation": { hi: "मुरझान रोग संक्रमण", pa: "ਉਖੇੜਾ ਰੋਗ", mr: "मर रोग", bn: "ঢলে পড়া রোগ", gu: "સુકારો રોગ", ta: "வாடல் நோய் தாக்குதல்", te: "వాడ తెగులు ప్రకోపం", kn: "ಬಾಡಲು ರೋಗ", ml: "ವಾട്ടം രോഗബാധ" },
       "Red Rot": { hi: "लाल सड़न रोग", pa: "ਲਾਲ ਸੜਨ ਰੋਗ", mr: "तांबेरा रोग", bn: "লাল পচা রোগ", gu: "લાલ સડો રોગ", ta: "செவ்வழுகல் நோய்", te: "ఎర్ర కుళ్లు తెగులు", kn: "ಕೆಂಪು ಕೊಳೆ ರೋಗ", ml: "ചുവപ്പ് ചീയൽ" },
+      "Severe Drought Stress": { hi: "गंभीर सूखा तनाव", pa: "ਗੰਭੀਰ ਸੁੱਕਾ ਤਣਾਅ", mr: "तीव्र दुष्काळ ताण", bn: "তীব্র খরা চাপ", gu: "ગંભીર દુષ્કાળ તણાવ", ta: "கடுமையான வறட்சி அழுத்தம்", te: "తీవ్రమైన ఎండతడి ఒత్తిడి", kn: "ತೀವ್ರ ಬರ ಒತ್ತಡ", ml: "കടുത്ത വരൾച്ച സമ്മർദം" },
+      "Stalk Rot": { hi: "तना सड़न", pa: "ਡੰਡੀ ਸੜਨ", mr: "खोड कुज", bn: "কাণ্ড পচা", gu: "દાંડી સડો", ta: "தண்டு அழுகல்", te: "కాండం కుళ్లు", kn: "ಕಾಂಡ ಕೊಳೆ", ml: "തണ്ടു ചീയൽ" },
+      "Yellow Rust": { hi: "पीला रतुआ", pa: "ਪੀਲੀ ਜੰਗਾਲ", mr: "पिवळी तांबेरा", bn: "হলুদ মরিচা", gu: "પીળો રસ્ટ", ta: "மஞ்சள் துரு", te: "పసుపు తుప్పు", kn: "ಹಳದಿ ರಸ್ಟ್", ml: "മഞ്ഞ മങ്ങൽ" },
+      "Aphid Infestation": { hi: "माहू संक्रमण", pa: "ਮੱਖੀ ਦਾ ਹਮਲਾ", mr: "मावा प्रादुर्भाव", bn: "এফিডের আক্রমণ", gu: "એફિડનો હુમલો", ta: "அஃபிட் தாக்குதல்", te: "ఎఫిడ్ దాడి", kn: "ಆಫಿಡ್ ಆಕ್ರಮಣ", ml: "അഫിഡ് ബാധ" },
+      "Minor Yellow Rust Detected (Sample Analysis)": { hi: "हल्का पीला रतुआ पाया गया (नमूना विश्लेषण)", pa: "ਹਲਕੀ ਪੀਲੀ ਜੰਗਾਲ ਮਿਲੀ (ਨਮੂਨਾ ਵਿਸ਼ਲੇਸ਼ਣ)", mr: "हलका पिवळा तांबेरा आढळला (नमुना विश्लेषण)", bn: "হালকা হলুদ মরিচা সনাক্ত হয়েছে (নমুনা বিশ্লেষণ)", gu: "હળવો પીળો રસ્ટ મળ્યો (નમૂના વિશ્લેષણ)", ta: "லேசான மஞ்சள் துரு கண்டறியப்பட்டது (மாதிரி பகுப்பாய்வு)", te: "తక్కువ స్థాయి పసుపు తుప్పు గుర్తించబడింది (నమూనా విశ్లేషణ)", kn: "ಸಣ್ಣ ಹಳದಿ ರಸ್ಟ್ ಪತ್ತೆಯಾಗಿದೆ (ಮಾದರಿ ವಿಶ್ಲೇಷಣೆ)", ml: "നിസാര മഞ്ഞ മങ്ങൽ കണ്ടെത്തി (മാതൃക വിശകലനം)" },
 
       // details
       "Broad brown spots with concentric rings resembling targetboards on older leaves first.": {
@@ -523,6 +518,94 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
         te: "చాలా తక్కువ లక్షణాలు ఉన్నాయి. జీవ నియంత్రణ ఏజెంట్లు స్థిరంగా పనిచేస్తున్నాయి.",
         kn: "ಅತ್ಯಂತ ಕಡಿಮೆ ಲಕ್ಷಣಗಳಿವೆ. ಜೈವಿಕ ನಿಯಂತ್ರಕಗಳು ಯಶಸ್ವಿಯಾಗಿ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತಿವೆ.",
         ml: "വളരെ കുറഞ്ഞ രോഗലക്ഷണങ്ങൾ മാത്രം. ജൈവ നിയന്ത്രണം ഫലപ്രദമായി പ്രവർത്തിക്കുന്നു."
+      },
+      "Severe Drought and Stalk Rot": {
+        hi: "गंभीर सूखा और तना सड़न",
+        pa: "ਗੰਭੀਰ ਸੁੱਕਾ ਅਤੇ ਡੰਡੀ ਸੜਨ",
+        mr: "तीव्र दुष्काळ आणि खोड कुज",
+        bn: "তীব্র খরা ও কাণ্ড পচা",
+        gu: "ગંભીર દુષ્કાળ અને દાંડી સડો",
+        ta: "கடுமையான வறட்சி மற்றும் தண்டு அழுகல்",
+        te: "తీవ్రమైన ఎండతడి మరియు కాండం కుళ్లు",
+        kn: "ತೀವ್ರ ಬರ ಮತ್ತು ಕಾಂಡ ಕೊಳೆ",
+        ml: "കടുത്ത വരൾച്ചയും തണ്ടു ചീയലും"
+      },
+      "Severe Drought Stress and Stalk Rot": {
+        hi: "गंभीर सूखा तनाव और तना सड़न",
+        pa: "ਗੰਭੀਰ ਸੁੱਕਾ ਤਣਾਅ ਅਤੇ ਡੰਡੀ ਸੜਨ",
+        mr: "तीव्र दुष्काळ ताण आणि खोड कुज",
+        bn: "তীব্র খরা চাপ ও কাণ্ড পচা",
+        gu: "ગંભીર દુષ્કાળ તણાવ અને દાંડી સડો",
+        ta: "கடுமையான வறட்சி அழுத்தம் மற்றும் தண்டு அழுகல்",
+        te: "తీవ్రమైన ఎండతడి ఒత్తిడి మరియు కాండం కుళ్లు",
+        kn: "ತೀವ್ರ ಬರ ಒತ್ತಡ ಮತ್ತು ಕಾಂಡ ಕೊಳೆ",
+        ml: "കടുത്ത വരൾച്ച സമ്മർദവും തണ്ടു ചീയലും"
+      },
+      "Harvest immediately to salvage any viable grain and avoid total crop loss.": {
+        hi: "किसी भी बचने योग्य दाने को बचाने और पूरी फसल हानि से बचने के लिए तुरंत कटाई करें।",
+        pa: "ਬਚਣ ਯੋਗ ਅਨਾਜ ਬਚਾਉਣ ਅਤੇ ਪੂਰੀ ਫ਼ਸਲ ਨੁਕਸਾਨ ਤੋਂ ਬਚਣ ਲਈ ਤੁਰੰਤ ਕਟਾਈ ਕਰੋ।",
+        mr: "वाचवता येईल असे धान्य वाचवण्यासाठी आणि संपूर्ण पीक नुकसान टाळण्यासाठी तात्काळ कापणी करा.",
+        bn: "বাঁচানো সম্ভব এমন শস্য রক্ষার জন্য এবং সম্পূর্ণ ফসলহানি এড়াতে অবিলম্বে কাটাই করুন।",
+        gu: "બચાવી શકાય તેવું અનાજ બચાવવા અને કુલ પાક નુકસાન ટાળવા માટે તરત કાપણી કરો.",
+        ta: "பயனுள்ள தானியத்தை காப்பாற்றவும் மற்றும் முழு பயிர் இழப்பை தவிர்க்கவும் உடனடியாக அறுவடை செய்யுங்கள்.",
+        te: "మిగిలే ధాన్యాన్ని రక్షించి మొత్తం పంట నష్టాన్ని నివారించేందుకు వెంటనే కోత కోయండి.",
+        kn: "ಉಳಿಸಬಹುದಾದ ಧಾನ್ಯವನ್ನು ಉಳಿಸಿ ಮತ್ತು ಸಂಪೂರ್ಣ ಬೆಳೆ ನಷ್ಟವನ್ನು ತಪ್ಪಿಸಲು ತಕ್ಷಣವೇ ಕೊಯ್ಲು ಮಾಡಿ.",
+        ml: "ഉപയോഗയോഗ്യമായ ധാനം രക്ഷിക്കുകയും പൂർണ്ണ വിളനഷ്ടം ഒഴിവാക്കുകയും ചെയ്യാൻ ഉടൻ കൊയ്ത്തെടുക്കുക."
+      },
+      "Implement consistent irrigation practices to reduce crop stress.": {
+        hi: "फसल पर तनाव कम करने के लिए नियमित सिंचाई पद्धति अपनाएं।",
+        pa: "ਫ਼ਸਲ ਦੇ ਤਣਾਅ ਨੂੰ ਘਟਾਉਣ ਲਈ ਲਗਾਤਾਰ ਸਿੰਚਾਈ ਅਪਣਾਓ।",
+        mr: "पीक ताण कमी करण्यासाठी नियमित सिंचन पद्धतीचा अवलंब करा.",
+        bn: "ফসলের চাপ কমাতে সঠিক ও নিয়মিত সেচ ব্যবস্থা গ্রহণ করুন।",
+        gu: "પાક પરનું તાણ ઘટાડવા માટે નિયમિત સિંચાઈ પદ્ધતિ અમલમાં લાવો.",
+        ta: "பயிர் அழுத்தத்தை குறைக்க ஒழுங்கான நீர்ப்பாசன முறையை பின்பற்றவும்.",
+        te: "పంట ఒత్తిడిని తగ్గించేందుకు స్థిరమైన సాగునీటి పద్ధతులను అమలు చేయండి.",
+        kn: "ಬೆಳೆ ಒತ್ತಡವನ್ನು ಕಡಿಮೆ ಮಾಡಲು ನಿಯಮಿತ ನೀರಾವರಿ ಕ್ರಮಗಳನ್ನು ಅನುಸರಿಸಿ.",
+        ml: "വിള സമ്മർദം കുറയ്ക്കാൻ സ്ഥിരതയുള്ള ജലസേചനം പാലിക്കുക."
+      },
+      "Maintain soil moisture and monitor for secondary rot.": {
+        hi: "मिट्टी में नमी बनाए रखें और द्वितीयक सड़न पर नज़र रखें।",
+        pa: "ਮਿੱਟੀ ਦੀ ਨਮੀ ਬਣਾਈ ਰੱਖੋ ਅਤੇ ਦੂਸਰੀ ਸੜਨ 'ਤੇ ਨਜ਼ਰ ਰੱਖੋ।",
+        mr: "मातीतील ओलावा राखा आणि दुय्यम कुज येते का ते तपासा.",
+        bn: "মাটির আর্দ্রতা বজায় রাখুন এবং সেকেন্ডারি পচন পর্যবেক্ষণ করুন।",
+        gu: "માટીની ભેજ જાળવી રાખો અને દ્વિતીય સડો પર નજર રાખો.",
+        ta: "மண்ணின் ஈரப்பதத்தை பராமரித்து இரண்டாம் நிலை அழுகலை கண்காணிக்கவும்.",
+        te: "నేల తేమను నిలుపుకుని ద్వితీయ కుళ్లును పర్యవేక్షించండి.",
+        kn: "ಮಣ್ಣಿನ ತೇವಾಂಶವನ್ನು ಕಾಪಾಡಿ ಮತ್ತು ದ್ವಿತೀಯ ಕೊಳೆಯನ್ನೇ ಗಮನಿಸಿ.",
+        ml: "മണ്ണിലെ ഈർപ്പം നിലനിർത്തി രണ്ടാമത്തെ ചീയൽ ലക്ഷണങ്ങൾ പരിശോധിക്കുക."
+      },
+      "Remove and destroy infected stalks and residues.": {
+        hi: "संक्रमित डंठलों और अवशेषों को हटाकर नष्ट करें।",
+        pa: "ਸੰਕਰਮਿਤ ਡੰਡੀਆਂ ਅਤੇ ਬਚੇਖੁਚੇ ਹਿੱਸਿਆਂ ਨੂੰ ਹਟਾਓ ਅਤੇ ਨਸ਼ਟ ਕਰੋ।",
+        mr: "बाधित कांडे आणि अवशेष काढून नष्ट करा.",
+        bn: "আক্রান্ত কাণ্ড ও অবশিষ্টাংশ সরিয়ে ধ্বংস করুন।",
+        gu: "સંક્રમિત ડાંગર અને અવશેષો દૂર કરીને નાશ કરો.",
+        ta: "பாதிக்கப்பட்ட தண்டுகள் மற்றும் எச்சங்களை அகற்றி அழிக்கவும்.",
+        te: "సోకిన కాండాలు మరియు అవశేషాలను తొలగించి నాశనం చేయండి.",
+        kn: "ಸೋಂಕಿತ ಕಾಂಡಗಳು ಮತ್ತು ಉಳಿದ ಭಾಗಗಳನ್ನು ತೆಗೆದು ನಾಶಪಡಿಸಿ.",
+        ml: "ബാധിത തണ്ടുകളും അവശിഷ്ടങ്ങളും നീക്കം ചെയ്ത് നശിപ്പിക്കുക."
+      },
+      "Apply Propiconazole 25 EC @ 0.1%.": {
+        hi: "प्रोपिकोनाज़ोल 25 ईसी @ 0.1% का छिड़काव करें।",
+        pa: "ਪ੍ਰੋਪਿਕੋਨਾਜੋਲ 25 EC @ 0.1% ਦਾ ਛਿੜਕਾਅ ਕਰੋ।",
+        mr: "प्रोपिकोनाझोल 25 ईसी @ 0.1% फवारणी करा.",
+        bn: "প্রোপিকোনাজল ২৫ ইসি @ ০.১% প্রয়োগ করুন।",
+        gu: "પ્રોપિકોનાઝોલ 25 EC @ 0.1% નો છંટકાવ કરો.",
+        ta: "Propiconazole 25 EC @ 0.1% பயன்படுத்துங்கள்.",
+        te: "Propiconazole 25 EC @ 0.1% పిచికారీ చేయండి.",
+        kn: "Propiconazole 25 EC @ 0.1% ಸಿಂಪಡಿಸಿ.",
+        ml: "Propiconazole 25 EC @ 0.1% പ്രയോഗിക്കുക."
+      },
+      "Avoid excessive irrigation during high humidity.": {
+        hi: "अधिक आर्द्रता के दौरान अत्यधिक सिंचाई से बचें।",
+        pa: "ਜ਼ਿਆਦਾ ਨਮੀ ਸਮੇਂ ਵੱਧ ਸਿੰਚਾਈ ਤੋਂ ਬਚੋ।",
+        mr: "जास्त आर्द्रतेत जास्त पाणी देणे टाळा.",
+        bn: "উচ্চ আর্দ্রতার সময় অতিরিক্ত সেচ এড়িয়ে চলুন।",
+        gu: "ઉચ્ચ ભેજ દરમિયાન વધુ સિંચાઈ ટાળો.",
+        ta: "அதிக ஈரப்பதத்தில் அதிகப்படியான நீர்ப்பாசனத்தைத் தவிர்க்கவும்.",
+        te: "అధిక ఆర్ద్రత సమయంలో అధిక నీటివ్వడం నివారించండి.",
+        kn: "ಹೆಚ್ಚಿನ ಆರ್ದ್ರತೆಯ ಸಮಯದಲ್ಲಿ ಅತಿಯಾದ ನೀರಾವರಿಯನ್ನು ತಪ್ಪಿಸಿ.",
+        ml: "ഉയർന്ന ഈർപ്പം സമയത്ത് അതിയായ ജലസേചനം ഒഴിവാക്കുക."
       },
 
       // Recommendations
@@ -707,24 +790,133 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       default: return opt;
     }
   };
-
-  const [reports, setReports] = useState<ReportItem[]>(() => {
-    const saved = localStorage.getItem('agrilens_crop_reports');
-    return saved ? JSON.parse(saved) : INITIAL_REPORTS;
+  
+  // Get dark mode from document or default to system preference
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'All' | 'Healthy' | 'Damaged' | 'High Risk' | 'Moderate Risk'>('All');
-  const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          setIsDarkMode(document.documentElement.classList.contains('dark'));
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('agrilens_crop_reports', JSON.stringify(reports));
-  }, [reports]);
+    const controller = new AbortController();
 
-  const handleDelete = (id: string) => {
-    setReports(prev => prev.filter(r => r.id !== id));
-    if (selectedReport?.id === id) {
-      setSelectedReport(null);
+    const loadReports = async () => {
+      try {
+        setLoadingReports(true);
+        setReportsError(null);
+
+        const response = await fetch('/api/cropreports', { signal: controller.signal });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const data: StoredCropReport[] = await response.json();
+        setReports(data.map(mapStoredReportToItem));
+      } catch (error: any) {
+        if (error?.name !== 'AbortError') {
+          setReportsError(error?.message || content.loadError || t.en.loadError);
+          setReports([]);
+        }
+      } finally {
+        setLoadingReports(false);
+      }
+    };
+
+    loadReports();
+
+    return () => controller.abort();
+  }, []);
+
+  // Helper function to convert ReportItem to CropReport
+  const convertToCropReport = (item: ReportItem): CropReport => {
+    const riskLevelMap: Record<string, RiskLevel> = {
+      'Healthy': 'healthy',
+      'Moderate Risk': 'moderate',
+      'Severe Damage': 'high'
+    };
+
+    const cropCodeMap: Record<string, string> = {
+      'Tomato': 'TO',
+      'Rice': 'RI',
+      'Potato': 'PO',
+      'Cotton': 'CO',
+      'Sugarcane': 'SU'
+    };
+
+    return {
+      id: item.id,
+      date: item.date,
+      cropName: translateText(item.cropName),
+      cropCode: cropCodeMap[item.cropName] || 'XX',
+      cropImage: item.cropImage,
+      disease: translateText(item.disease),
+      riskLevel: riskLevelMap[item.status] || 'moderate',
+      damage: item.damage,
+      confidence: item.confidence,
+      recommendation: item.recommendations.length > 0
+        ? item.recommendations.map((recommendation) => translateText(recommendation)).join(' ')
+        : translateText(item.details)
+    };
+  };
+
+  const mapStoredReportToItem = (report: StoredCropReport): ReportItem => {
+    const damage = Number(report.damageSeverity || 0);
+    const confidence = Number(report.confidenceScore || 0);
+    const status = report.status === 'Healthy' || report.status === 'Moderate Risk' || report.status === 'Severe Damage'
+      ? report.status
+      : damage >= 60
+        ? 'Severe Damage'
+        : damage >= 20
+          ? 'Moderate Risk'
+          : 'Healthy';
+
+    return {
+      id: report._id || `${report.fileName}-${report.capturedAt}`,
+      date: new Date(report.capturedAt).toISOString().slice(0, 10),
+      cropName: report.cropName,
+      cropImage: report.cropImage,
+      disease: report.detectedCondition,
+      damage,
+      confidence,
+      status,
+      details: report.treatmentSuggestions.length > 0 ? report.treatmentSuggestions.join(' ') : report.detectedCondition,
+      recommendations: report.treatmentSuggestions,
+    };
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/cropreports/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      setReports(prev => prev.filter(r => r.id !== id));
+      if (selectedReport?.id === id) {
+        setSelectedReport(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete crop report:', error);
     }
   };
 
@@ -777,7 +969,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
   const totalCount = reports.length;
   const healthyCount = reports.filter(r => r.status === 'Healthy').length;
   const damagedCount = reports.filter(r => r.status === 'Severe Damage' || r.status === 'Moderate Risk').length;
-  const avgAccuracy = totalCount > 0 ? Math.round(reports.reduce((acc, current) => acc + current.confidence, 0) / totalCount) : 98;
+  const avgAccuracy = totalCount > 0 ? Math.round(reports.reduce((acc, current) => acc + current.confidence, 0) / totalCount) : 0;
 
   // Filter & Search
   const filteredReports = reports.filter(r => {
@@ -798,16 +990,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
     return true;
   });
 
-  const getStatusBadge = (status: ReportItem['status']) => {
-    switch (status) {
-      case 'Healthy':
-        return <Badge className="bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-950 dark:text-green-300 font-extrabold border-none py-1 px-3 whitespace-nowrap">{content.statusHealthy}</Badge>;
-      case 'Moderate Risk':
-        return <Badge className="bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300 font-extrabold border-none py-1 px-3 whitespace-nowrap">{content.statusMod}</Badge>;
-      case 'Severe Damage':
-        return <Badge className="bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-950 dark:text-rose-300 font-extrabold border-none py-1 px-3 whitespace-nowrap">{content.statusSev}</Badge>;
-    }
-  };
+
 
   return (
     <div className="space-y-8 pb-12">
@@ -911,7 +1094,26 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       </div>
 
       {/* Reports Listing */}
-      {filteredReports.length === 0 ? (
+      {loadingReports ? (
+        <Card className="border border-dashed border-border/80 bg-muted/10 p-12 text-center rounded-[24px]">
+          <CardContent className="space-y-3 max-w-md mx-auto">
+            <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center text-muted-foreground mx-auto">
+              <RefreshCw className="h-8 w-8 animate-spin" />
+            </div>
+            <h3 className="font-extrabold text-lg text-foreground">{content.loadingReports || t.en.loadingReports}</h3>
+          </CardContent>
+        </Card>
+      ) : reportsError ? (
+        <Card className="border border-dashed border-border/80 bg-muted/10 p-12 text-center rounded-[24px]">
+          <CardContent className="space-y-3 max-w-md mx-auto">
+            <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center text-destructive mx-auto">
+              <AlertCircle className="h-8 w-8" />
+            </div>
+            <h3 className="font-extrabold text-lg text-foreground">{content.unableToLoadReports || t.en.unableToLoadReports}</h3>
+            <p className="text-sm text-muted-foreground">{reportsError}</p>
+          </CardContent>
+        </Card>
+      ) : filteredReports.length === 0 ? (
         <Card className="border border-dashed border-border/80 bg-muted/10 p-12 text-center rounded-[24px]">
           <CardContent className="space-y-4 max-w-md mx-auto">
             <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center text-muted-foreground mx-auto">
@@ -924,7 +1126,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
           <AnimatePresence>
             {filteredReports.map((report, idx) => (
               <motion.div
@@ -933,75 +1135,32 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.25, delay: idx * 0.05 }}
+                className="h-full"
               >
-                <Card className="overflow-hidden border-border/80 hover:border-primary/30 shadow-sm hover:shadow-md transition-all duration-300 relative group flex flex-col justify-between">
-                  {/* Styled Header Container with dual-color styles */}
-                  <div className="bg-zinc-950 dark:bg-white text-zinc-100 dark:text-zinc-950 p-5 flex justify-between items-center transition-colors border-b border-zinc-900 dark:border-neutral-200 select-none">
-                    <div className="flex gap-3 items-center">
-                      {/* Generates Crop Initial Avatar with high styling contrast */}
-                      <div className="h-11 w-11 rounded-xl bg-white/10 dark:bg-zinc-950/5 text-zinc-100 dark:text-zinc-950 flex items-center justify-center shrink-0 font-bold text-sm border border-white/20 dark:border-zinc-950/10 shadow-sm">
-                        {report.cropName.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <h3 className="font-extrabold text-base tracking-tight leading-tight">
-                          {translateText(report.cropName)}
-                        </h3>
-                        <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-semibold flex items-center gap-1 mt-1">
-                          <Calendar className="h-3 w-3 text-primary dark:text-green-600" /> {report.date}
-                        </p>
-                      </div>
-                    </div>
-                    {getStatusBadge(report.status)}
-                  </div>
-
-                  {/* Body remains with original items, styled beautifully */}
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                    <div className="grid grid-cols-3 gap-2 py-2.5 px-3.5 bg-muted/35 dark:bg-zinc-800/50 rounded-xl text-center border border-border/40">
-                      <div>
-                        <p className="text-[9px] uppercase font-semibold text-muted-foreground">{content.diseaseText}</p>
-                        <p className="font-extrabold text-xs text-foreground truncate mt-0.5" title={translateText(report.disease)}>{translateText(report.disease)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase font-semibold text-muted-foreground">{content.damageText}</p>
-                        <p className="font-extrabold text-xs text-destructive mt-0.5">{report.damage}%</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase font-semibold text-muted-foreground">{content.confidenceText}</p>
-                        <p className="font-extrabold text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">{report.confidence}%</p>
-                      </div>
-                    </div>
-
-                    {/* Actions buttons */}
-                    <div className="flex items-center justify-between pt-3 border-t border-border/40 px-1 gap-2">
-                      <Button 
-                        onClick={() => setSelectedReport(report)}
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-neutral-900 border-none font-bold text-xs h-9 flex items-center gap-1 px-3 rounded-full hover:bg-neutral-100 dark:text-white dark:hover:bg-zinc-800"
-                      >
-                        <Eye className="h-4 w-4" /> {content.viewReport}
-                      </Button>
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          onClick={() => handleDownloadPDF(report)}
-                          variant="secondary"
-                          size="sm"
-                          className="h-9 px-3 rounded-full font-bold text-xs flex items-center gap-1 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700 bg-secondary text-neutral-900"
-                        >
-                          <Download className="h-3.5 w-3.5" /> {content.pdf}
-                        </Button>
-                        <Button
-                          onClick={() => handleDelete(report.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="h-9 p-0 w-9 rounded-full text-destructive hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+                <CropReportCard
+                  report={convertToCropReport(report)}
+                  isDarkMode={isDarkMode}
+                  labels={{
+                    riskHigh: content.riskHighLabel || t.en.riskHighLabel,
+                    riskModerate: content.riskModerateLabel || t.en.riskModerateLabel,
+                    riskLow: content.riskLowLabel || t.en.riskLowLabel,
+                    riskHealthy: content.riskHealthyLabel || t.en.riskHealthyLabel,
+                    capturedOn: content.capturedOn || t.en.capturedOn,
+                    bioDiagnostic: content.bioDiagnostic || t.en.bioDiagnostic,
+                    damageSeverity: content.damageSeverityCard || t.en.damageSeverityCard,
+                    aiValidationConfidence: content.aiValidationConfidence || t.en.aiValidationConfidence,
+                    urgentAction: content.urgentAction || t.en.urgentAction,
+                    monitorMessage: content.monitorMessage || t.en.monitorMessage,
+                    stableMessage: content.stableMessage || t.en.stableMessage,
+                    modelValidationActive: content.modelValidationActive || t.en.modelValidationActive,
+                    detailedDiagnosticFile: content.detailedDiagnosticFile || t.en.detailedDiagnosticFile,
+                    pdfExport: content.pdfExport || t.en.pdfExport,
+                    deleteReportAria: content.deleteReportAria || t.en.deleteReportAria,
+                  }}
+                  onViewReport={(_cropReport: CropReport) => setSelectedReport(report)}
+                  onDownloadPDF={(_cropReport: CropReport) => handleDownloadPDF(report)}
+                  onDeleteReport={(id: string) => handleDelete(id)}
+                />
               </motion.div>
             ))}
           </AnimatePresence>
@@ -1041,7 +1200,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
                   </div>
                   <div className="bg-muted/45 p-3 rounded-xl border border-border/10">
                     <span className="text-[10px] uppercase font-bold text-muted-foreground">{content.confidence}</span>
-                    <p className="font-extrabold text-primary text-sm mt-0.5">{selectedReport.confidence}% Accurate</p>
+                    <p className="font-extrabold text-primary text-sm mt-0.5">{selectedReport.confidence}% {content.accurateSuffix || t.en.accurateSuffix}</p>
                   </div>
                 </div>
 

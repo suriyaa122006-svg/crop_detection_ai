@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Camera, Brain, Lightbulb, FileText, ArrowRight, Search, Zap, ShieldCheck, Users, Activity, Sprout, Wheat, Leaf, Flower2, Waves, User, History, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LanguageCode } from '@/src/lib/languages';
+
+interface DashboardCropReport {
+  _id?: string;
+  cropName: string;
+  detectedCondition: string;
+  damageSeverity: number;
+  confidenceScore: number;
+  capturedAt: string;
+  cropImage?: string;
+}
 
 interface HomeProps {
   setActiveTab: (tab: string) => void;
@@ -15,6 +25,8 @@ interface HomeProps {
 
 export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect, user }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [recentReports, setRecentReports] = useState<DashboardCropReport[]>([]);
+  const [reportsError, setReportsError] = useState<string | null>(null);
   const t: Record<string, any> = {
     en: {
       searchPlaceholder: "Search for crops, diseases, or PMFBY info...",
@@ -24,7 +36,14 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
       quickCrops: "Quick Crop Access",
       crops: [{ id: 'rice', name: 'Rice', icon: Waves }, { id: 'wheat', name: 'Wheat', icon: Wheat }, { id: 'maize', name: 'Maize', icon: Sprout }, { id: 'cotton', name: 'Cotton', icon: Flower2 }, { id: 'sugarcane', name: 'Sugarcane', icon: Leaf }, { id: 'mustard', name: 'Mustard', icon: Flower2 }, { id: 'soyabean', name: 'Soyabean', icon: Sprout }, { id: 'groundnut', name: 'Groundnut', icon: Leaf }],
       stats: { accuracy: "98.5% AI Accuracy", farmers: "50k+ Farmers Joined", claims: "₹12Cr Claims Processed" },
-      features: { analytics: { title: "AI Crop Analytics", desc: "Our advanced CNN models analyze crop images in real-time to detect diseases and nutrient deficiencies with high precision.", tag: "Most Popular" }, calculator: { title: "Premium Calculator", desc: "Instant estimation of your PMFBY insurance premiums based on current government rates.", tag: "Tool" }, assistant: { title: "Digital Assistant", desc: "24/7 AI support for all your farming queries and PMFBY guidance.", tag: "Support" }, reports: { title: "Smart Reports", desc: "Generate and save detailed health reports for insurance claims.", tag: "New" }, profile: { title: "My Farmer Profile", desc: "Update your details, bank account, and document status.", tag: "Account" } }
+      features: { analytics: { title: "AI Crop Analytics", desc: "Our advanced CNN models analyze crop images in real-time to detect diseases and nutrient deficiencies with high precision.", tag: "Most Popular" }, calculator: { title: "Premium Calculator", desc: "Instant estimation of your PMFBY insurance premiums based on current government rates.", tag: "Tool" }, assistant: { title: "Digital Assistant", desc: "24/7 AI support for all your farming queries and PMFBY guidance.", tag: "Support" }, reports: { title: "Smart Reports", desc: "Generate and save detailed health reports for insurance claims.", tag: "New" }, profile: { title: "My Farmer Profile", desc: "Update your details, bank account, and document status.", tag: "Account" } },
+      liveImpact: "Live Impact",
+      previousReportsTitle: "Previous Crop Reports",
+      previousReportsDesc: "View previously analyzed crop reports, disease detection history, and saved AI analysis results.",
+      farmerFallback: "Farmer",
+      districtFallback: "District",
+      stateFallback: "State",
+      latestUpdateLabel: "Latest update"
     },
     hi: {
       searchPlaceholder: "फसलों, बीमारियों या PMFBY जानकारी के लिए खोजें...",
@@ -34,7 +53,14 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
       quickCrops: "त्वरित फसल पहुंच",
       crops: [{ id: 'rice', name: 'चावल', icon: Waves }, { id: 'wheat', name: 'गेहूं', icon: Wheat }, { id: 'maize', name: 'मक्का', icon: Sprout }, { id: 'cotton', name: 'कपास', icon: Flower2 }, { id: 'sugarcane', name: 'गन्ना', icon: Leaf }, { id: 'mustard', name: 'सरसों', icon: Flower2 }, { id: 'soyabean', name: 'सोयाबीन', icon: Sprout }, { id: 'groundnut', name: 'मूंगफली', icon: Leaf }],
       stats: { accuracy: "98.5% एआई सटीकता", farmers: "50k+ किसान जुड़े", claims: "₹12Cr दावों का निपटान" },
-      features: { analytics: { title: "एआई फसल विश्लेषण", desc: "हमारे उन्नत CNN मॉडल बीमारियों और पोषक तत्वों की कमी का पता लगाने के लिए विश्लेषण करते हैं।", tag: "सबसे लोकप्रिय" }, calculator: { title: "प्रीमियम कैलकुलेटर", desc: "आपके PMFBY बीमा प्रीमियम का त्वरित अनुमान।", tag: "उपकरण" }, assistant: { title: "डिजिटल सहायक", desc: "आपकी सभी खेती संबंधी पूछताछ के लिए 24/7 सहायता।", tag: "सहायता" }, reports: { title: "स्मार्ट रिपोर्ट", desc: "बीमा दावों के लिए विस्तृत स्वास्थ्य रिपोर्ट तैयार करें।", tag: "नया" }, profile: { title: "मेरी किसान प्रोफ़ाइल", desc: "अपने विवरण और बैंक खाते अपडेट करें।", tag: "खाता" } }
+      features: { analytics: { title: "एआई फसल विश्लेषण", desc: "हमारे उन्नत CNN मॉडल बीमारियों और पोषक तत्वों की कमी का पता लगाने के लिए विश्लेषण करते हैं।", tag: "सबसे लोकप्रिय" }, calculator: { title: "प्रीमियम कैलकुलेटर", desc: "आपके PMFBY बीमा प्रीमियम का त्वरित अनुमान।", tag: "उपकरण" }, assistant: { title: "डिजिटल सहायक", desc: "आपकी सभी खेती संबंधी पूछताछ के लिए 24/7 सहायता।", tag: "सहायता" }, reports: { title: "स्मार्ट रिपोर्ट", desc: "बीमा दावों के लिए विस्तृत स्वास्थ्य रिपोर्ट तैयार करें।", tag: "नया" }, profile: { title: "मेरी किसान प्रोफ़ाइल", desc: "अपने विवरण और बैंक खाते अपडेट करें।", tag: "खाता" } },
+      liveImpact: "लाइव प्रभाव",
+      previousReportsTitle: "पिछले फसल विवरण",
+      previousReportsDesc: "अपनी पिछली सहेजी गई फसल रिपोर्ट, बीमारी का पता लगाने का इतिहास और विस्तृत AI स्वास्थ्य विश्लेषण परिणाम देखें।",
+      farmerFallback: "किसान",
+      districtFallback: "जिला",
+      stateFallback: "राज्य",
+      latestUpdateLabel: "नवीनतम अपडेट"
     },
     pa: {
       searchPlaceholder: "ਫਸਲਾਂ, ਬੀਮਾਰੀਆਂ ਜਾਂ PMFBY ਜਾਣਕਾਰੀ ਲਈ ਖੋਜੋ...",
@@ -132,7 +158,10 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
       maize: "Maize",
       paddyStatus: "96% Healthy & Stable",
       wheatStatus: "92% Healthy (Mild Yellowing)",
-      maizeStatus: "95% Optimal Growth"
+      maizeStatus: "95% Optimal Growth",
+      highRisk: "High Risk",
+      monitor: "Monitor",
+      healthy: "Healthy"
     },
     hi: {
       title: "फ़सल पहचान इतिहास",
@@ -145,7 +174,10 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
       maize: "मक्का",
       paddyStatus: "96% स्वस्थ और मजबूत",
       wheatStatus: "92% स्वस्थ (हल्का पीलापन)",
-      maizeStatus: "95% उत्कृष्ट फसल स्वास्थ्य"
+      maizeStatus: "95% उत्कृष्ट फसल स्वास्थ्य",
+      highRisk: "उच्च जोखिम",
+      monitor: "निगरानी",
+      healthy: "स्वस्थ"
     },
     mr: {
       title: "पीक ओळख इतिहास",
@@ -158,7 +190,10 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
       maize: "मका",
       paddyStatus: "96% सुरक्षित आणि निरोगी",
       wheatStatus: "92% ठीक (सौम्य पिवळसरपणा)",
-      maizeStatus: "95% उत्कृष्ट पीक स्थिती"
+      maizeStatus: "95% उत्कृष्ट पीक स्थिती",
+      highRisk: "उच्च जोखीम",
+      monitor: "निगराणी",
+      healthy: "निरोगी"
     },
     ta: {
       title: "பயிர் கண்டறிதல் வரலாறு",
@@ -171,11 +206,78 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
       maize: "சோளம்",
       paddyStatus: "96% ஆரோக்கியமான வளர்ச்சி",
       wheatStatus: "92% மிதமான சத்து குறைபாடு",
-      maizeStatus: "95% உகந்த பயிர் ஆரோக்கியம்"
+      maizeStatus: "95% உகந்த பயிர் ஆரோக்கியம்",
+      highRisk: "அதிக ஆபத்து",
+      monitor: "கண்காணிப்பு",
+      healthy: "ஆரோக்கியமானது"
     }
   };
 
   const hContent = historyT[language] || historyT['en'];
+
+  const loadRecentReports = async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch('/api/cropreports', { signal });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const data: DashboardCropReport[] = await response.json();
+      setRecentReports(data.slice(0, 3));
+      setReportsError(null);
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        setReportsError(error?.message || 'Failed to load crop history');
+        setRecentReports([]);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadRecentReports(controller.signal);
+
+    const intervalId = window.setInterval(() => {
+      loadRecentReports();
+    }, 15000);
+
+    const handleFocus = () => {
+      loadRecentReports();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      controller.abort();
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, []);
+
+  const healthScore = useMemo(() => {
+    if (recentReports.length === 0) return 0;
+
+    const averageDamage = recentReports.reduce((total, report) => total + Number(report.damageSeverity || 0), 0) / recentReports.length;
+    return Math.max(0, Math.min(100, Math.round(100 - averageDamage)));
+  }, [recentReports]);
+
+  const historySummary = useMemo(() => {
+    if (recentReports.length === 0) {
+      return [
+        { label: hContent.paddy, value: hContent.paddyStatus },
+        { label: hContent.wheat, value: hContent.wheatStatus },
+        { label: hContent.maize, value: hContent.maizeStatus },
+      ];
+    }
+
+    return recentReports.map((report) => ({
+      label: report.cropName,
+      value: `${Math.max(0, Math.min(100, Math.round(100 - Number(report.damageSeverity || 0))))}% ${Number(report.damageSeverity || 0) > 50 ? (hContent.highRisk || historyT.en.highRisk) : Number(report.damageSeverity || 0) > 20 ? (hContent.monitor || historyT.en.monitor) : (hContent.healthy || historyT.en.healthy)}`,
+    }));
+  }, [hContent.healthy, hContent.highRisk, hContent.maize, hContent.maizeStatus, hContent.monitor, hContent.paddy, hContent.paddyStatus, hContent.wheat, hContent.wheatStatus, recentReports]);
 
   return (
     <div className="space-y-4 pb-12">
@@ -253,7 +355,7 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
                 </div>
                 <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium opacity-80 uppercase tracking-widest">Live Impact</p>
+                    <p className="text-xs font-medium opacity-80 uppercase tracking-widest">{content.liveImpact || t.en.liveImpact}</p>
                     <h3 className="text-xl font-bold">{content.stats.accuracy}</h3>
                   </div>
                   <div className="flex items-center gap-2 text-sm font-medium">
@@ -326,10 +428,10 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
                   </div>
                   <div className="mt-4">
                     <h3 className="font-extrabold text-lg text-neutral-900 dark:text-white transition-colors group-hover:text-green-600 dark:group-hover:text-green-400">
-                      {language === 'hi' ? 'पिछले फसल विवरण' : 'Previous Crop Reports'}
+                      {content.previousReportsTitle || t.en.previousReportsTitle}
                     </h3>
                     <p className="text-xs text-neutral-600 dark:text-neutral-300 line-clamp-2 mt-1">
-                      {language === 'hi' ? 'अपनी पिछली सहेजी गई फसल रिपोर्ट, बीमारी का पता लगाने का इतिहास और विस्तृत AI स्वास्थ्य विश्लेषण परिणाम देखें।' : 'View previously analyzed crop reports, disease detection history, and saved AI analysis results.'}
+                      {content.previousReportsDesc || t.en.previousReportsDesc}
                     </p>
                   </div>
                 </CardContent>
@@ -365,7 +467,7 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
                   <div className="mt-4">
                     <h3 className="font-bold text-xl group-hover:text-primary transition-colors">{content.features.profile.title}</h3>
                     <p className="text-xs text-muted-foreground font-semibold mt-1">
-                      {user?.name || "Farmer"} &bull; {user?.district || "District"}, {user?.state || "State"}
+                      {user?.name || content.farmerFallback || t.en.farmerFallback} &bull; {user?.district || content.districtFallback || t.en.districtFallback}, {user?.state || content.stateFallback || t.en.stateFallback}
                     </p>
                     <p className="text-[11px] text-muted-foreground line-clamp-2 mt-2 font-medium">{content.features.profile.desc}</p>
                   </div>
@@ -397,31 +499,37 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
                       </div>
                     </div>
                     <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-none font-bold text-xs px-2.5 py-1 flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" /> {hContent.score}: 94.5%
+                      <TrendingUp className="h-3 w-3" /> {hContent.score}: {healthScore}%
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-primary/5 dark:bg-primary/10 p-2.5 rounded-lg border border-primary/10 flex flex-col justify-center">
-                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{hContent.paddy}</span>
-                      <span className="text-[11px] font-bold text-primary mt-0.5">{hContent.paddyStatus}</span>
-                    </div>
-                    <div className="bg-primary/5 dark:bg-primary/10 p-2.5 rounded-lg border border-primary/10 flex flex-col justify-center">
-                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{hContent.wheat}</span>
-                      <span className="text-[11px] font-bold text-primary mt-0.5">{hContent.wheatStatus}</span>
-                    </div>
-                    <div className="bg-primary/5 dark:bg-primary/10 p-2.5 rounded-lg border border-primary/10 flex flex-col justify-center">
-                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{hContent.maize}</span>
-                      <span className="text-[11px] font-bold text-primary mt-0.5">{hContent.maizeStatus}</span>
-                    </div>
+                    {historySummary.map((item, index) => (
+                      <div key={`${item.label}-${index}`} className="bg-primary/5 dark:bg-primary/10 p-2.5 rounded-lg border border-primary/10 flex flex-col justify-center min-h-[58px]">
+                        <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider truncate">{item.label}</span>
+                        <span className="text-[11px] font-bold text-primary mt-0.5 truncate">{item.value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-dashed border-border/80 flex items-start gap-2.5">
                   <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-muted-foreground leading-relaxed font-semibold">
-                    {hContent.report}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    {reportsError ? (
+                      <p className="text-[11px] text-red-500 leading-relaxed font-semibold truncate">
+                        {reportsError}
+                      </p>
+                    ) : recentReports.length > 0 ? (
+                      <p className="text-[11px] text-muted-foreground leading-relaxed font-semibold">
+                        {content.latestUpdateLabel || t.en.latestUpdateLabel}: {recentReports[0].cropName} - {recentReports[0].detectedCondition}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground leading-relaxed font-semibold">
+                        {hContent.report}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </Card>
             </motion.div>

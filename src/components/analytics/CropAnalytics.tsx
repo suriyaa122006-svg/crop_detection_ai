@@ -24,6 +24,7 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const hasSavedReportRef = useRef(false);
 
   useEffect(() => {
     if (preselectedCrop) {
@@ -138,7 +139,7 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
         return;
       }
       
-      startAnalysis(image);
+      startAnalysis(image, false);
       lastAnalyzedLanguage.current = language;
     }
   }, [language, image, result, analyzing]);
@@ -170,7 +171,10 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
       generatedOn: "Generated on",
       conditionLabel: "Condition",
       confidenceScore: "Confidence Score",
-      disclaimerFooter: "This is an AI-generated report for PMFBY support. Please consult an expert for critical decisions."
+      disclaimerFooter: "This is an AI-generated report for PMFBY support. Please consult an expert for critical decisions.",
+      useCamera: "Use device camera",
+      selectGallery: "Select from gallery",
+      cancel: "Cancel"
     },
     hi: {
       title: "एआई फसल विश्लेषण प्रणाली",
@@ -198,7 +202,10 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
       generatedOn: "पर उत्पन्न",
       conditionLabel: "स्थिति",
       confidenceScore: "विश्वास स्कोर",
-      disclaimerFooter: "यह PMFBY समर्थन के लिए AI-जनरेटेड रिपोर्ट है। महत्वपूर्ण निर्णयों के लिए विशेषज्ञ से सलाह लें।"
+      disclaimerFooter: "यह PMFBY समर्थन के लिए AI-जनरेटेड रिपोर्ट है। महत्वपूर्ण निर्णयों के लिए विशेषज्ञ से सलाह लें।",
+      useCamera: "डिवाइस कैमरा उपयोग करें",
+      selectGallery: "गैलरी से चुनें",
+      cancel: "रद्द करें"
     },
     pa: {
       title: "AI ਫਸਲ ਵਿਸ਼ਲੇਸ਼ਣ ਪ੍ਰਣਾਲੀ",
@@ -384,10 +391,11 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
     const file = e.target.files?.[0];
     if (file) {
       setImageName(file.name);
+      hasSavedReportRef.current = false;
       const reader = new FileReader();
       reader.onloadend = () => {
         setImage(reader.result as string);
-        startAnalysis(reader.result as string);
+        startAnalysis(reader.result as string, true, file.name);
       };
       reader.readAsDataURL(file);
     }
@@ -416,17 +424,143 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
       const dataUrl = canvas.toDataURL('image/jpeg');
       setImage(dataUrl);
       setImageName(language === 'en' ? 'Captured Camera Image' : 'कैप्चर की गई छवि');
+      hasSavedReportRef.current = false;
       
       // Stop camera stream
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
       setShowCamera(false);
       
-      startAnalysis(dataUrl);
+      startAnalysis(dataUrl, true, language === 'en' ? 'Captured Camera Image' : 'कैप्चर की गई छवि');
     }
   };
 
-  const startAnalysis = async (imgData: string) => {
+  const normalizeAnalysisCondition = (analysis: any) => {
+    return String(
+      analysis?.detectedCondition ||
+      analysis?.condition ||
+      analysis?.diagnosis ||
+      analysis?.summary ||
+      ''
+    ).trim();
+  };
+
+  const deriveDamageSeverity = (analysis: any) => {
+    if (typeof analysis?.damageSeverity === 'number' && Number.isFinite(analysis.damageSeverity)) {
+      return Math.max(0, Math.min(100, analysis.damageSeverity));
+    }
+
+    if (typeof analysis?.damage === 'number' && Number.isFinite(analysis.damage)) {
+      return Math.max(0, Math.min(100, analysis.damage));
+    }
+
+    const condition = normalizeAnalysisCondition(analysis).toLowerCase();
+    if (!condition) {
+      const confidenceScore = typeof analysis?.confidence === 'number'
+        ? Math.round(analysis.confidence * 100)
+        : typeof analysis?.confidenceScore === 'number'
+          ? analysis.confidenceScore
+          : 0;
+
+      return Math.max(0, Math.min(100, 100 - confidenceScore));
+    }
+
+    const criticalKeywords = ['severe drought', 'severe', 'rot', 'blight', 'infestation', 'necrosis', 'wilt', 'wilting', 'drought stress', 'stalk rot'];
+    const moderateKeywords = ['damage', 'spot', 'rust', 'mild', 'moderate', 'yellowing', 'chlorosis', 'leaf curl', 'early blight'];
+    const lowKeywords = ['healthy', 'stable', 'normal', 'vigorous', 'no infestation', 'no disease'];
+
+    if (lowKeywords.some((keyword) => condition.includes(keyword))) {
+      return 0;
+    }
+
+    if (criticalKeywords.some((keyword) => condition.includes(keyword))) {
+      if (condition.includes('severe') || condition.includes('rot') || condition.includes('blight') || condition.includes('infestation')) {
+        return 85;
+      }
+
+      return 70;
+    }
+
+    if (moderateKeywords.some((keyword) => condition.includes(keyword))) {
+      return 35;
+    }
+
+    const confidenceScore = typeof analysis?.confidence === 'number'
+      ? Math.round(analysis.confidence * 100)
+      : typeof analysis?.confidenceScore === 'number'
+        ? analysis.confidenceScore
+        : 0;
+
+    return Math.max(5, Math.min(100, 100 - confidenceScore));
+  };
+
+  const deriveStatus = (analysis: any, severity: number) => {
+    if (typeof analysis?.status === 'string') return analysis.status;
+
+    const condition = normalizeAnalysisCondition(analysis).toLowerCase();
+    if (condition.includes('healthy') || severity < 15) return 'Healthy';
+    if (condition.includes('severe') || condition.includes('rot') || condition.includes('blight') || condition.includes('infestation') || severity > 60) {
+      return 'Critical';
+    }
+    if (severity >= 15) return 'Monitor';
+    return 'Healthy';
+  };
+
+  const saveReportToJson = async (report: any, reportImageName?: string, reportImageData?: string) => {
+    try {
+      const confidenceScore = typeof report?.confidence === 'number'
+        ? Math.round(report.confidence * 100)
+        : typeof report?.confidenceScore === 'number'
+          ? report.confidenceScore
+          : 0;
+      const damageSeverity = deriveDamageSeverity(report);
+      const status = deriveStatus(report, damageSeverity);
+      const detectedCondition = normalizeAnalysisCondition(report);
+
+      const response = await fetch('/api/cropreports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          report: {
+            cropName: report?.cropType || report?.cropName || content.detectedCrop,
+            detectedCondition,
+            confidenceScore,
+            damageSeverity,
+            treatmentSuggestions: Array.isArray(report?.suggestions) ? report.suggestions : [],
+            diagnosticType: report?.diagnosticType || report?.cropType || content.analysisResult,
+            status,
+            capturedAt: new Date().toISOString(),
+            fileName: reportImageName || imageName || content.deviceName,
+            cropImage: reportImageData || image || undefined,
+            pmfbyClaimFiled: Boolean(report?.pmfbyClaimFiled),
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error saving crop report JSON:', error);
+      throw error;
+    }
+  };
+
+  const getEnglishReportForStorage = async (imgData: string, fallbackReport: any) => {
+    try {
+      return await analyzeCropImage(imgData, 'en');
+    } catch (error) {
+      console.error('Falling back to current analysis for storage:', error);
+      return fallbackReport;
+    }
+  };
+
+  const startAnalysis = async (imgData: string, shouldPersistReport = true, reportImageName?: string) => {
     setAnalyzing(true);
     setProgress(0);
     setResult(null);
@@ -448,6 +582,12 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
       setProgress(100);
       setResult(analysisResult);
       setAnalyzing(false);
+
+      if (shouldPersistReport && !hasSavedReportRef.current) {
+        const englishReport = await getEnglishReportForStorage(imgData, analysisResult);
+        await saveReportToJson(englishReport, reportImageName, imgData);
+        hasSavedReportRef.current = true;
+      }
     } catch (error) {
       console.error(error);
       setAnalyzing(false);
@@ -460,6 +600,7 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
     setImageName(null);
     setResult(null);
     setProgress(0);
+    hasSavedReportRef.current = false;
     if (onReset) onReset();
   };
 
@@ -572,7 +713,7 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
             </div>
             <div className="text-center">
               <h3 className="text-xl font-bold">{content.capture}</h3>
-              <p className="text-sm text-muted-foreground">Use device camera</p>
+              <p className="text-sm text-muted-foreground">{content.useCamera || t.en.useCamera}</p>
             </div>
           </Card>
 
@@ -585,7 +726,7 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
             </div>
             <div className="text-center">
               <h3 className="text-xl font-bold">{content.upload}</h3>
-              <p className="text-sm text-muted-foreground">Select from gallery</p>
+              <p className="text-sm text-muted-foreground">{content.selectGallery || t.en.selectGallery}</p>
             </div>
             <input 
               type="file" 
@@ -613,7 +754,7 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
                 stream?.getTracks().forEach(track => track.stop());
                 setShowCamera(false);
               }}>
-                Cancel
+                {content.cancel || t.en.cancel}
               </Button>
               <Button size="lg" onClick={capturePhoto} className="rounded-full h-16 w-16 p-0">
                 <div className="h-12 w-12 rounded-full border-4 border-white"></div>

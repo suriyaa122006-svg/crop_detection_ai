@@ -15,9 +15,43 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     sparse: true
   },
+  photo: {
+    type: String
+  },
+  state: {
+    type: String
+  },
+  district: {
+    type: String
+  },
+  townName: {
+    type: String
+  },
+  villageName: {
+    type: String
+  },
+  bankName: {
+    type: String
+  },
+  branchName: {
+    type: String
+  },
+  bankAcc: {
+    type: String
+  },
+  bankType: {
+    type: String
+  },
+  aadhar: {
+    type: String
+  },
   password: {
     type: String,
     required: true
+  },
+  registrationData: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, { timestamps: true });
 

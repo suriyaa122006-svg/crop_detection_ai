@@ -22,6 +22,32 @@ export default function App() {
     console.log('APP LOADED');
   }, []);
 
+  const normalizeUser = (userData: any) => {
+    if (!userData) {
+      return null;
+    }
+
+    const registrationData = userData.registrationData || {};
+
+    return {
+      ...registrationData,
+      ...userData,
+      name: userData.name || registrationData.name,
+      mobile: userData.mobile || registrationData.mobile,
+      email: userData.email || registrationData.email,
+      photo: userData.photo || registrationData.photo,
+      state: userData.state || registrationData.state,
+      district: userData.district || registrationData.district,
+      townName: userData.townName || registrationData.townName,
+      villageName: userData.villageName || registrationData.villageName,
+      bankName: userData.bankName || registrationData.bankName,
+      branchName: userData.branchName || registrationData.branchName,
+      bankAcc: userData.bankAcc || registrationData.bankAcc,
+      bankType: userData.bankType || registrationData.bankType,
+      aadhar: userData.aadhar || registrationData.aadhar
+    };
+  };
+
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window === 'undefined') {
       return 'signin';
@@ -43,7 +69,7 @@ export default function App() {
     }
 
     try {
-      return JSON.parse(storedUser);
+      return normalizeUser(JSON.parse(storedUser));
     } catch {
       return null;
     }
@@ -74,7 +100,7 @@ export default function App() {
 
   const handleLogin = (userData: any) => {
     // Enrich user data with mock defaults if fields are missing
-    const enrichedUser = {
+    const enrichedUser = normalizeUser({
       ...userData,
       email: userData.email || 'farmer.help@example.com',
       aadhar: userData.aadhar || 'XXXX-XXXX-4521',
@@ -84,13 +110,20 @@ export default function App() {
       state: userData.state || 'Maharashtra',
       district: userData.district || 'Nagpur',
       photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80'
-    };
+    });
+    localStorage.setItem('user', JSON.stringify(enrichedUser));
     setUser(enrichedUser);
     setActiveTab('home');
   };
 
   const handleUpdateUser = (updatedData: any) => {
-    setUser(updatedData);
+    const nextUser = normalizeUser({
+      ...(user || {}),
+      ...updatedData
+    });
+
+    localStorage.setItem('user', JSON.stringify(nextUser));
+    setUser(nextUser);
   };
 
   const handleLogout = () => {
@@ -201,7 +234,7 @@ export default function App() {
 
           {activeTab === 'home' && user && (
             <div className="mb-4">
-              <WeatherWidget language={language} />
+              <WeatherWidget language={language} user={user} />
             </div>
           )}
           
