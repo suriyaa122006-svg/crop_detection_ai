@@ -1,6 +1,10 @@
 import mongoose, { Schema, type Document } from 'mongoose';
 
 export interface ICropReport extends Document {
+  userId?: string;
+  userName: string;
+  userMobile: string;
+  userEmail: string;
   cropName: string;
   detectedCondition: string;
   confidenceScore: number;
@@ -16,6 +20,10 @@ export interface ICropReport extends Document {
 
 const cropReportSchema = new Schema<ICropReport>(
   {
+    userId: { type: String, trim: true },
+    userName: { type: String, required: true, trim: true },
+    userMobile: { type: String, required: true, trim: true, index: true },
+    userEmail: { type: String, default: '', trim: true },
     cropName: { type: String, required: true, trim: true },
     detectedCondition: { type: String, required: true, trim: true },
     confidenceScore: { type: Number, required: true, min: 0, max: 100 },
@@ -33,6 +41,8 @@ const cropReportSchema = new Schema<ICropReport>(
     timestamps: true,
   }
 );
+
+cropReportSchema.index({ userMobile: 1, capturedAt: -1, createdAt: -1 });
 
 const CropReport = mongoose.model<ICropReport>('CropReport', cropReportSchema);
 

@@ -8,14 +8,16 @@ import { analyzeCropImage } from '@/src/services/geminiService';
 import { Badge } from '@/components/ui/badge';
 import { LanguageCode } from '@/src/lib/languages';
 import { jsPDF } from 'jspdf';
+import { resolveCropReportOwnerIdentity } from '@/src/lib/cropReports';
 
 interface CropAnalyticsProps {
   language: LanguageCode;
   preselectedCrop?: string | null;
   onReset?: () => void;
+  user?: any;
 }
 
-export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselectedCrop, onReset }) => {
+export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselectedCrop, onReset, user }) => {
   const [image, setImage] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -25,6 +27,7 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
   const videoRef = useRef<HTMLVideoElement>(null);
   const [showCamera, setShowCamera] = useState(false);
   const hasSavedReportRef = useRef(false);
+  const ownerIdentity = resolveCropReportOwnerIdentity(user);
 
   useEffect(() => {
     if (preselectedCrop) {
@@ -508,6 +511,10 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
 
   const saveReportToJson = async (report: any, reportImageName?: string, reportImageData?: string) => {
     try {
+      if (!ownerIdentity?.userMobile) {
+        throw new Error('Missing user identity for crop report storage');
+      }
+
       const confidenceScore = typeof report?.confidence === 'number'
         ? Math.round(report.confidence * 100)
         : typeof report?.confidenceScore === 'number'
@@ -524,6 +531,10 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
         },
         body: JSON.stringify({
           report: {
+            userId: ownerIdentity.userId,
+            userName: ownerIdentity.userName,
+            userMobile: ownerIdentity.userMobile,
+            userEmail: ownerIdentity.userEmail,
             cropName: report?.cropType || report?.cropName || content.detectedCrop,
             detectedCondition,
             confidenceScore,
@@ -704,38 +715,38 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
 
       {!image && !showCamera && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <Card 
-            className="cursor-pointer hover:border-primary transition-colors border-dashed border-2 flex flex-col items-center justify-center p-12 space-y-4"
-            onClick={startCamera}
-          >
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Camera className="h-8 w-8 text-primary" />
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold">{content.capture}</h3>
-              <p className="text-sm text-muted-foreground">{content.useCamera || t.en.useCamera}</p>
-            </div>
-          </Card>
+            <Card 
+              className="cursor-pointer hover:border-primary transition-colors border-dashed border-2 flex flex-col items-center justify-center p-14 sm:p-16 min-h-[300px] space-y-4"
+              onClick={startCamera}
+            >
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <Camera className="h-8 w-8 text-primary" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-bold">{content.capture}</h3>
+                <p className="text-sm text-muted-foreground">{content.useCamera || t.en.useCamera}</p>
+              </div>
+            </Card>
 
-          <Card 
-            className="cursor-pointer hover:border-primary transition-colors border-dashed border-2 flex flex-col items-center justify-center p-12 space-y-4"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Upload className="h-8 w-8 text-primary" />
-            </div>
-            <div className="text-center">
-              <h3 className="text-xl font-bold">{content.upload}</h3>
-              <p className="text-sm text-muted-foreground">{content.selectGallery || t.en.selectGallery}</p>
-            </div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleFileUpload} 
-            />
-          </Card>
+            <Card 
+              className="cursor-pointer hover:border-primary transition-colors border-dashed border-2 flex flex-col items-center justify-center p-14 sm:p-16 min-h-[300px] space-y-4"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <Upload className="h-8 w-8 text-primary" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-bold">{content.upload}</h3>
+                <p className="text-sm text-muted-foreground">{content.selectGallery || t.en.selectGallery}</p>
+              </div>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleFileUpload} 
+              />
+            </Card>
         </div>
       )}
 

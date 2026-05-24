@@ -15,6 +15,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "Support & Help",
       govLinks: "Government Portals",
       contact: "Contact Us",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "All Rights Reserved.",
       links: {
         home: "Home",
@@ -30,6 +33,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "सहायता और मदद",
       govLinks: "सरकारी पोर्टल",
       contact: "संपर्क करें",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "सर्वाधिकार सुरक्षित।",
       links: {
         home: "होम",
@@ -45,6 +51,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "ਸਹਾਇਤਾ ਅਤੇ ਮਦਦ",
       govLinks: "ਸਰਕਾਰੀ ਪੋਰਟਲ",
       contact: "ਸਾਡੇ ਨਾਲ ਸੰਪਰਕ ਕਰੋ",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "ਸਾਰੇ ਹੱਕ ਰਾਖਵੇਂ ਹਨ।",
       links: {
         home: "ਹੋਮ",
@@ -60,6 +69,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "समर्थन आणि मदत",
       govLinks: "सरकारी पोर्टल",
       contact: "आमच्याशी संपर्क साधा",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "सर्व हक्क राखीव।",
       links: {
         home: "होम",
@@ -75,6 +87,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "সহায়তা এবং সাহায্য",
       govLinks: "সরকারি পোর্টাল",
       contact: "আমাদের সাথে যোগাযোগ করুন",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "সমস্ত অধিকার সংরক্ষিত।",
       links: {
         home: "হোম",
@@ -90,6 +105,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "સપોર્ટ અને મદદ",
       govLinks: "સરકારી પોર્ટલ",
       contact: "અમારો સંપર્ક કરો",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "તમામ હકો અનામત.",
       links: {
         home: "હોમ",
@@ -105,6 +123,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "ஆதரவு மற்றும் உதவி",
       govLinks: "அரசு இணையதளங்கள்",
       contact: "எங்களைத் தொடர்பு கொள்ளுங்கள்",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.",
       links: {
         home: "முகப்பு",
@@ -120,6 +141,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "మద్దతు మరియు సహాయం",
       govLinks: "ప్రభుత్వ పోర్టల్స్",
       contact: "మమ్మల్ని సంప్రదించండి",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "అన్ని హక్కులు ప్రత్యేకించబడినవి.",
       links: {
         home: "హోమ్",
@@ -135,6 +159,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "ಬೆಂಬಲ ಮತ್ತು ಸಹಾಯ",
       govLinks: "ಸರ್ಕಾರಿ ಪೋರ್ಟಲ್‌ಗಳು",
       contact: "ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "ಸರ್ವ ಹಕ್ಕುಗಳನ್ನು ಕಾಯ್ದಿರಿಸಲಾಗಿದೆ.",
       links: {
         home: "ಹೋಮ್",
@@ -150,6 +177,9 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
       support: "പിന്തുണയും സഹായവും",
       govLinks: "ഗവൺമെന്റ് പോർട്ടലുകൾ",
       contact: "ഞങ്ങളെ ബന്ധപ്പെടുക",
+      contactAddress: "Old Hospital Street, Denkanikotta, Krishnagiri (dt), Tamilnadu - 635107",
+      contactPhone: "9380157300",
+      contactEmail: "smaneeshmanju07@gmail.com",
       rights: "എല്ലാ അവകാശങ്ങളും നിക്ഷിപ്തം.",
       links: {
         home: "ഹോം",
@@ -164,8 +194,8 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
   const content = t[language] || t['en'];
 
   return (
-    <footer className="bg-muted/30 border-t pt-16 pb-8 mt-20">
-      <div className="container mx-auto px-4">
+    <footer className="w-full bg-muted/30 border-t pt-16 pb-8 mt-0">
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
           {/* Brand Column */}
           <div className="space-y-6">
@@ -236,15 +266,15 @@ export const Footer: React.FC<FooterProps> = ({ language, setActiveTab }) => {
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-primary shrink-0" />
-                <span>Krishi Bhawan, New Delhi, India - 110001</span>
+                <span>{content.contactAddress}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-primary shrink-0" />
-                <span>1800-180-1551 (Toll Free)</span>
+                <span>{content.contactPhone}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-primary shrink-0" />
-                <span>support@agrilens.ai</span>
+                <span>{content.contactEmail}</span>
               </li>
             </ul>
           </div>

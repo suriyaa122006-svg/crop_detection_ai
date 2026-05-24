@@ -8,6 +8,10 @@ import authRoutes from "./routes/auth";
 import CropReport from "./models/cropReport";
 
 type CropReportInput = {
+  userId?: unknown;
+  userName?: unknown;
+  userMobile?: unknown;
+  userEmail?: unknown;
   cropName?: unknown;
   cropType?: unknown;
   detectedCondition?: unknown;
@@ -76,8 +80,20 @@ function normalizeCropReportInput(report: CropReportInput) {
   const initialSeverity = clampNumber(report.damageSeverity ?? report.damage, 0, 100, 5);
   const damageSeverity = deriveDamageSeverity(detectedCondition, initialSeverity);
   const status = deriveStatus(detectedCondition, damageSeverity);
+  const userMobile = String(report.userMobile || "").trim();
+  const userName = String(report.userName || "Farmer").trim() || "Farmer";
+  const userEmail = String(report.userEmail || "").trim();
+  const userId = String(report.userId || "").trim();
+
+  if (!userMobile) {
+    throw new Error("Missing user mobile number for crop report ownership");
+  }
 
   return {
+    userId: userId || undefined,
+    userName,
+    userMobile,
+    userEmail,
     cropName: String(report.cropName || report.cropType || "Unknown crop").trim(),
     detectedCondition,
     confidenceScore,
@@ -194,9 +210,15 @@ async function startServer() {
     }
   });
 
-  app.get("/api/cropreports", async (_req, res) => {
+  app.get("/api/cropreports", async (req, res) => {
     try {
-      const reports = await CropReport.find({}).sort({ capturedAt: -1, createdAt: -1 }).lean();
+      const userMobile = String(req.query.mobile || req.query.userMobile || "").trim();
+
+      if (!userMobile) {
+        return res.json([]);
+      }
+
+      const reports = await CropReport.find({ userMobile }).sort({ capturedAt: -1, createdAt: -1 }).lean();
       res.json(reports);
     } catch (error: any) {
       console.error("Error fetching crop reports:", error);
@@ -207,7 +229,13 @@ async function startServer() {
   app.delete("/api/cropreports/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const deletedReport = await CropReport.findByIdAndDelete(id);
+      const userMobile = String(req.query.mobile || req.body?.mobile || req.body?.userMobile || "").trim();
+
+      if (!userMobile) {
+        return res.status(400).json({ error: "Missing user mobile number" });
+      }
+
+      const deletedReport = await CropReport.findOneAndDelete({ _id: id, userMobile });
 
       if (!deletedReport) {
         return res.status(404).json({ error: "Crop report not found" });

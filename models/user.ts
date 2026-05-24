@@ -49,6 +49,12 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  tempPasswordHash: {
+    type: String
+  },
+  tempPasswordExpires: {
+    type: Date
+  },
   registrationData: {
     type: mongoose.Schema.Types.Mixed,
     default: {}

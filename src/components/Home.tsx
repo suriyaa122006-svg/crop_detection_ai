@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LanguageCode } from '@/src/lib/languages';
+import { getCropReportsCacheKey, resolveCropReportOwnerIdentity } from '@/src/lib/cropReports';
 
 interface DashboardCropReport {
   _id?: string;
@@ -25,8 +26,6 @@ interface HomeProps {
 
 export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect, user }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [recentReports, setRecentReports] = useState<DashboardCropReport[]>([]);
-  const [reportsError, setReportsError] = useState<string | null>(null);
   const t: Record<string, any> = {
     en: {
       searchPlaceholder: "Search for crops, diseases, or PMFBY info...",
@@ -40,6 +39,8 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
       liveImpact: "Live Impact",
       previousReportsTitle: "Previous Crop Reports",
       previousReportsDesc: "View previously analyzed crop reports, disease detection history, and saved AI analysis results.",
+      noHistoryReports: "No crop reports yet for this account.",
+      noHistoryReportsDesc: "Analyze a crop image to see the latest detection history here.",
       farmerFallback: "Farmer",
       districtFallback: "District",
       stateFallback: "State",
@@ -214,16 +215,60 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
   };
 
   const hContent = historyT[language] || historyT['en'];
+  const ownerIdentity = resolveCropReportOwnerIdentity(user);
+  const reportsCacheKey = getCropReportsCacheKey(ownerIdentity?.userMobile);
+
+  const readCachedReports = (): DashboardCropReport[] => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+      const cached = window.sessionStorage.getItem(reportsCacheKey);
+      if (!cached) return [];
+
+      const parsed = JSON.parse(cached);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const [recentReports, setRecentReports] = useState<DashboardCropReport[]>(() => readCachedReports().slice(0, 3));
+  const [reportsError, setReportsError] = useState<string | null>(null);
+
+  const writeCachedReports = (items: DashboardCropReport[]) => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Keep cache small so storage quota issues do not break UI updates.
+      const lightweight = items.map((item) => ({ ...item, cropImage: undefined }));
+      window.sessionStorage.setItem(reportsCacheKey, JSON.stringify(lightweight));
+    } catch (error) {
+      console.warn('Unable to cache dashboard crop reports:', error);
+    }
+  };
 
   const loadRecentReports = async (signal?: AbortSignal) => {
+    if (!ownerIdentity?.userMobile) {
+      setRecentReports([]);
+      setReportsError(null);
+      return;
+    }
+
     try {
-      const response = await fetch('/api/cropreports', { signal });
+      const cachedReports = readCachedReports();
+      if (cachedReports.length > 0) {
+        setRecentReports(cachedReports.slice(0, 3));
+        setReportsError(null);
+      }
+
+      const response = await fetch(`/api/cropreports?mobile=${encodeURIComponent(ownerIdentity.userMobile)}`, { signal });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || `HTTP error! status: ${response.status}`);
       }
 
       const data: DashboardCropReport[] = await response.json();
+      writeCachedReports(data);
       setRecentReports(data.slice(0, 3));
       setReportsError(null);
     } catch (error: any) {
@@ -255,7 +300,7 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };
-  }, []);
+  }, [ownerIdentity?.userMobile, reportsCacheKey]);
 
   const healthScore = useMemo(() => {
     if (recentReports.length === 0) return 0;
@@ -266,11 +311,7 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
 
   const historySummary = useMemo(() => {
     if (recentReports.length === 0) {
-      return [
-        { label: hContent.paddy, value: hContent.paddyStatus },
-        { label: hContent.wheat, value: hContent.wheatStatus },
-        { label: hContent.maize, value: hContent.maizeStatus },
-      ];
+      return [];
     }
 
     return recentReports.map((report) => ({
@@ -503,14 +544,21 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    {historySummary.map((item, index) => (
-                      <div key={`${item.label}-${index}`} className="bg-primary/5 dark:bg-primary/10 p-2.5 rounded-lg border border-primary/10 flex flex-col justify-center min-h-[58px]">
-                        <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider truncate">{item.label}</span>
-                        <span className="text-[11px] font-bold text-primary mt-0.5 truncate">{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {historySummary.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2">
+                      {historySummary.map((item, index) => (
+                        <div key={`${item.label}-${index}`} className="bg-primary/5 dark:bg-primary/10 p-2.5 rounded-lg border border-primary/10 flex flex-col justify-center min-h-[58px]">
+                          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider truncate">{item.label}</span>
+                          <span className="text-[11px] font-bold text-primary mt-0.5 truncate">{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-5 text-center">
+                      <p className="text-sm font-bold text-foreground">{content.noHistoryReports || t.en.noHistoryReports}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{content.noHistoryReportsDesc || t.en.noHistoryReportsDesc}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-dashed border-border/80 flex items-start gap-2.5">
@@ -526,7 +574,7 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
                       </p>
                     ) : (
                       <p className="text-[11px] text-muted-foreground leading-relaxed font-semibold">
-                        {hContent.report}
+                        {content.noHistoryReportsDesc || t.en.noHistoryReportsDesc}
                       </p>
                     )}
                   </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Landmark, MapPin, Phone, Mail, Lock, ShieldCheck, CreditCard, Building2, UserCircle, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,13 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { LanguageCode } from '@/src/lib/languages';
+import { INDIA_DISTRICTS_BY_STATE, INDIA_STATES } from '@/src/lib/indiaLocations';
+import { getBankSuggestions, resolveBankName } from '@/src/lib/indiaBanks';
 
+const getDistrictListId = (stateName: string) =>
+  `districts-${stateName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+const STATE_LIST_ID = 'india-state-list';
 interface RegisterProps {
   language: LanguageCode;
   setActiveTab: (tab: string) => void;
@@ -51,6 +57,48 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
   const [isAadharVerifying, setIsAadharVerifying] = useState(false);
   const [isAadharVerified, setIsAadharVerified] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stateQuery, setStateQuery] = useState('');
+  const [isStateOpen, setIsStateOpen] = useState(false);
+  const [districtQuery, setDistrictQuery] = useState('');
+  const [isDistrictOpen, setIsDistrictOpen] = useState(false);
+  const [isBankOpen, setIsBankOpen] = useState(false);
+
+  const districtOptions = useMemo(() => {
+    if (!formData.state) return [];
+    return INDIA_DISTRICTS_BY_STATE[formData.state] || [];
+  }, [formData.state]);
+
+  const filteredStates = useMemo(() => {
+    const query = stateQuery.trim().toLowerCase();
+    if (!query) return INDIA_STATES;
+    return INDIA_STATES.filter((stateName) => stateName.toLowerCase().includes(query));
+  }, [stateQuery]);
+
+  const filteredDistricts = useMemo(() => {
+    const query = districtQuery.trim().toLowerCase();
+    if (!formData.state) return [];
+
+    const districts = INDIA_DISTRICTS_BY_STATE[formData.state] || [];
+    if (!query) return districts;
+    return districts.filter((districtName) => districtName.toLowerCase().includes(query));
+  }, [districtQuery, formData.state]);
+
+  const availableBanks = useMemo(
+    () => getBankSuggestions(formData.bankType, formData.state, ''),
+    [formData.bankType, formData.state]
+  );
+
+  const filteredBanks = useMemo(() => {
+    const query = formData.bankName.trim().toLowerCase();
+    if (!query) return availableBanks;
+    return availableBanks.filter((bankName) => bankName.toLowerCase().includes(query));
+  }, [availableBanks, formData.bankName]);
+
+  const bankFilterLabel = formData.bankType && formData.state
+    ? `Showing ${availableBanks.length} banks for the chosen type and state`
+    : formData.bankType
+      ? 'Select a state to see matching banks'
+      : 'Select a bank type to see matching banks';
 
   const handleAadharVerify = () => {
     if (!formData.aadhar || formData.aadhar.length !== 12) return;
@@ -73,9 +121,16 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
     if (!formData.bankType) newErrors.bankType = 'Bank type is required';
     if (!formData.userCategory) newErrors.userCategory = 'User category is required';
     if (!formData.state) newErrors.state = 'State is required';
-    if (!formData.district) newErrors.district = 'District is required';
+    if (!formData.district) {
+      newErrors.district = 'District is required';
+    } else if (formData.state && !districtOptions.includes(formData.district)) {
+      newErrors.district = 'Please select a valid district for the selected state';
+    }
     if (!formData.bankName) newErrors.bankName = 'Bank name is required';
-    if (!formData.branchName) newErrors.branchName = 'Branch name is required';
+    else if (!availableBanks.some((bankName) => bankName.toLowerCase() === formData.bankName.trim().toLowerCase())) {
+      newErrors.bankName = 'Please select a valid bank for the chosen type and state';
+    }
+    if (!formData.branchName.trim()) newErrors.branchName = 'Branch name is required';
     if (!formData.personalTitle) newErrors.personalTitle = 'Title is required';
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     
@@ -110,7 +165,9 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (formData.email && !emailRegex.test(formData.email)) {
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(formData.email)) {
       newErrors.email = 'Invalid email format';
     }
 
@@ -122,6 +179,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
     if (validate()) {
       setIsSubmitting(true);
       const { confirmPassword, ...registrationData } = formData;
+      const selectedBankName = resolveBankName(formData.bankType, formData.state, formData.bankName);
 
       try {
         const res = await fetch('/api/auth/signup', {
@@ -131,6 +189,10 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
           },
           body: JSON.stringify({
             ...registrationData,
+            bankName: selectedBankName || registrationData.bankName.trim(),
+            branchName: registrationData.branchName.trim(),
+            state: registrationData.state.trim(),
+            district: registrationData.district.trim(),
             aadharVerified: isAadharVerified
           })
         });
@@ -830,9 +892,9 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                     <SelectValue placeholder={content.placeholders.stakeholder} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="bank">{content.options.bank}</SelectItem>
-                    <SelectItem value="insurance">{content.options.insurance}</SelectItem>
-                    <SelectItem value="gov">{content.options.gov}</SelectItem>
+                    <SelectItem value={content.options.bank}>{content.options.bank}</SelectItem>
+                    <SelectItem value={content.options.insurance}>{content.options.insurance}</SelectItem>
+                    <SelectItem value={content.options.gov}>{content.options.gov}</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.stakeholder && <p className="text-[10px] text-destructive font-medium">{errors.stakeholder}</p>}
@@ -845,7 +907,8 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Select 
                   value={formData.bankType} 
                   onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, bankType: value || '' }));
+                    setFormData(prev => ({ ...prev, bankType: value || '', bankName: '', branchName: '' }));
+                    setIsBankOpen(false);
                     setErrors(prev => ({ ...prev, bankType: '' }));
                   }}
                 >
@@ -876,9 +939,9 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                     <SelectValue placeholder={content.placeholders.category} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="head">{content.options.head}</SelectItem>
-                    <SelectItem value="user">{content.options.user}</SelectItem>
-                    <SelectItem value="admin">{content.options.admin}</SelectItem>
+                    <SelectItem value={content.options.head}>{content.options.head}</SelectItem>
+                    <SelectItem value={content.options.user}>{content.options.user}</SelectItem>
+                    <SelectItem value={content.options.admin}>{content.options.admin}</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.userCategory && <p className="text-[10px] text-destructive font-medium">{errors.userCategory}</p>}
@@ -888,22 +951,54 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Label className="flex gap-1">
                   {content.state} <span className="text-destructive">*</span>
                 </Label>
-                <Select 
-                  value={formData.state} 
-                  onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, state: value || '' }));
-                    setErrors(prev => ({ ...prev, state: '' }));
-                  }}
-                >
-                  <SelectTrigger className={errors.state ? 'border-destructive' : ''}>
-                    <SelectValue placeholder={content.placeholders.state} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="up">Uttar Pradesh</SelectItem>
-                    <SelectItem value="mp">Madhya Pradesh</SelectItem>
-                    <SelectItem value="mh">Maharashtra</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Input
+                    placeholder={content.placeholders.state}
+                    value={isStateOpen ? stateQuery : formData.state}
+                    onFocus={() => {
+                      setIsStateOpen(true);
+                      setStateQuery(formData.state);
+                    }}
+                    onBlur={() => {
+                      window.setTimeout(() => setIsStateOpen(false), 120);
+                    }}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setStateQuery(nextValue);
+                      setFormData(prev => ({ ...prev, state: '', district: '', bankName: '', branchName: '' }));
+                      setIsBankOpen(false);
+                      setErrors(prev => ({ ...prev, state: '' }));
+                      setIsStateOpen(true);
+                    }}
+                    className={errors.state ? 'border-destructive' : ''}
+                  />
+                  {isStateOpen && (
+                    <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+                      <div className="max-h-36 overflow-y-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                        {filteredStates.map((stateName) => (
+                          <button
+                            key={stateName}
+                            type="button"
+                            className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setFormData(prev => ({ ...prev, state: stateName, district: '', bankName: '', branchName: '' }));
+                              setStateQuery(stateName);
+                              setIsStateOpen(false);
+                              setIsBankOpen(false);
+                              setErrors(prev => ({ ...prev, state: '' }));
+                            }}
+                          >
+                            {stateName}
+                          </button>
+                        ))}
+                        {filteredStates.length === 0 && (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">No matching state found.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {errors.state && <p className="text-[10px] text-destructive font-medium">{errors.state}</p>}
               </div>
 
@@ -911,21 +1006,57 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Label className="flex gap-1">
                   {content.district} <span className="text-destructive">*</span>
                 </Label>
-                <Select 
-                  value={formData.district} 
-                  onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, district: value || '' }));
-                    setErrors(prev => ({ ...prev, district: '' }));
-                  }}
-                >
-                  <SelectTrigger className={errors.district ? 'border-destructive' : ''}>
-                    <SelectValue placeholder={content.placeholders.district} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="d1">District 1</SelectItem>
-                    <SelectItem value="d2">District 2</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Input
+                    placeholder={content.placeholders.district}
+                    value={isDistrictOpen ? districtQuery : formData.district}
+                    onFocus={() => {
+                      if (!formData.state) return;
+                      setIsDistrictOpen(true);
+                      setDistrictQuery(formData.district);
+                    }}
+                    onBlur={() => {
+                      window.setTimeout(() => setIsDistrictOpen(false), 120);
+                    }}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setDistrictQuery(nextValue);
+                      setFormData(prev => ({ ...prev, district: '' }));
+                      setErrors(prev => ({ ...prev, district: '' }));
+                      setIsDistrictOpen(true);
+                    }}
+                    disabled={!formData.state}
+                    className={errors.district ? 'border-destructive' : ''}
+                  />
+                  {isDistrictOpen && formData.state && (
+                    <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+                      <div className="max-h-36 overflow-y-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                        {filteredDistricts.map((districtName) => (
+                          <button
+                            key={districtName}
+                            type="button"
+                            className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setFormData(prev => ({ ...prev, district: districtName }));
+                              setDistrictQuery(districtName);
+                              setIsDistrictOpen(false);
+                              setErrors(prev => ({ ...prev, district: '' }));
+                            }}
+                          >
+                            {districtName}
+                          </button>
+                        ))}
+                        {filteredDistricts.length === 0 && (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">No matching district found.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  {formData.state ? 'Type to search and select a district for the chosen state.' : 'Select a state first to load its districts.'}
+                </p>
                 {errors.district && <p className="text-[10px] text-destructive font-medium">{errors.district}</p>}
               </div>
 
@@ -1006,21 +1137,50 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Label className="flex gap-1">
                   {content.bankName} <span className="text-destructive">*</span>
                 </Label>
-                <Select 
-                  value={formData.bankName} 
-                  onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, bankName: value || '' }));
-                    setErrors(prev => ({ ...prev, bankName: '' }));
-                  }}
-                >
-                  <SelectTrigger className={errors.bankName ? 'border-destructive' : ''}>
-                    <SelectValue placeholder={content.placeholders.bank} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sbi">State Bank of India</SelectItem>
-                    <SelectItem value="pnb">Punjab National Bank</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Input
+                    placeholder={ui.bankPlaceholder}
+                    value={formData.bankName}
+                    onFocus={() => {
+                      setIsBankOpen(true);
+                    }}
+                    onBlur={() => {
+                      window.setTimeout(() => setIsBankOpen(false), 120);
+                    }}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setFormData(prev => ({ ...prev, bankName: nextValue }));
+                      setErrors(prev => ({ ...prev, bankName: '' }));
+                      setIsBankOpen(true);
+                    }}
+                    className={errors.bankName ? 'border-destructive' : ''}
+                  />
+                  {isBankOpen && (
+                    <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+                      <div className="max-h-36 overflow-y-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                        {filteredBanks.map((bankName) => (
+                          <button
+                            key={bankName}
+                            type="button"
+                            className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setFormData(prev => ({ ...prev, bankName }));
+                              setIsBankOpen(false);
+                              setErrors(prev => ({ ...prev, bankName: '' }));
+                            }}
+                          >
+                            {bankName}
+                          </button>
+                        ))}
+                        {filteredBanks.length === 0 && (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">No matching bank found.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">{bankFilterLabel}</p>
                 {errors.bankName && <p className="text-[10px] text-destructive font-medium">{errors.bankName}</p>}
               </div>
 
@@ -1028,21 +1188,15 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Label className="flex gap-1">
                   {content.branchName} <span className="text-destructive">*</span>
                 </Label>
-                <Select 
-                  value={formData.branchName} 
-                  onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, branchName: value || '' }));
+                <Input 
+                  placeholder={ui.branchPlaceholder}
+                  value={formData.branchName}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, branchName: e.target.value }));
                     setErrors(prev => ({ ...prev, branchName: '' }));
                   }}
-                >
-                  <SelectTrigger className={errors.branchName ? 'border-destructive' : ''}>
-                    <SelectValue placeholder={content.placeholders.branch} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="b1">Branch 1</SelectItem>
-                    <SelectItem value="b2">Branch 2</SelectItem>
-                  </SelectContent>
-                </Select>
+                  className={errors.branchName ? 'border-destructive' : ''}
+                />
                 {errors.branchName && <p className="text-[10px] text-destructive font-medium">{errors.branchName}</p>}
               </div>
             </div>
@@ -1136,20 +1290,15 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
                 <Label className="flex gap-1">
                   {content.mobile} <span className="text-destructive">*</span>
                 </Label>
-                <div className="flex gap-2">
-                  <Input 
-                    placeholder={content.placeholders.mobile} 
-                    value={formData.mobile}
-                    onChange={(e) => {
-                      setFormData(prev => ({ ...prev, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) }));
-                      setErrors(prev => ({ ...prev, mobile: '' }));
-                    }}
-                    className={errors.mobile ? 'border-destructive' : ''}
-                  />
-                  <Button variant="secondary" className="bg-indigo-600 text-white hover:bg-indigo-700">
-                    {content.verify}
-                  </Button>
-                </div>
+                <Input 
+                  placeholder={content.placeholders.mobile} 
+                  value={formData.mobile}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) }));
+                    setErrors(prev => ({ ...prev, mobile: '' }));
+                  }}
+                  className={errors.mobile ? 'border-destructive' : ''}
+                />
                 {errors.mobile && <p className="text-[10px] text-destructive font-medium">{errors.mobile}</p>}
               </div>
 
@@ -1191,7 +1340,9 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
               </div>
 
               <div className="space-y-2">
-                <Label>{content.email}</Label>
+                <Label className="flex gap-1">
+                  {content.email} <span className="text-destructive">*</span>
+                </Label>
                 <Input 
                   type="email" 
                   placeholder={content.placeholders.email} 

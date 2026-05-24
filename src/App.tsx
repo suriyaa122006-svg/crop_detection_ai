@@ -3,6 +3,7 @@ import { ThemeProvider } from '@/src/lib/ThemeContext';
 import { Navbar } from '@/src/components/layout/Navbar';
 import { Footer } from '@/src/components/layout/Footer';
 import { Home } from '@/src/components/Home';
+import { LandingPage } from '@/src/components/landing/LandingPage';
 import { CropAnalytics } from '@/src/components/analytics/CropAnalytics';
 import { PremiumCalculator } from '@/src/components/calculator/PremiumCalculator';
 import { Assistant } from '@/src/components/assistant/Assistant';
@@ -49,11 +50,7 @@ export default function App() {
   };
 
   const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window === 'undefined') {
-      return 'signin';
-    }
-
-    return localStorage.getItem('user') ? 'home' : 'signin';
+    return 'landing';
   });
   const [language, setLanguage] = useState<LanguageCode>('en');
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,22 +72,12 @@ export default function App() {
     }
   });
 
+  const showBackButton = activeTab !== 'home' && activeTab !== 'signin' && activeTab !== 'register' && activeTab !== 'reports' && user;
+
   const smoothScrollToTop = () => {
-    const duration = 1500; // 1.5 seconds for slower transition
-    const start = window.pageYOffset;
-    const startTime = 'now' in window.performance ? performance.now() : new Date().getTime();
-
-    const scroll = (timestamp: number) => {
-      const currentTime = 'now' in window.performance ? performance.now() : new Date().getTime();
-      const time = Math.min(1, (currentTime - startTime) / duration);
-      const ease = time < 0.5 ? 2 * time * time : -1 + (4 - 2 * time) * time;
-      
-      window.scrollTo(0, Math.ceil(ease * (0 - start) + start));
-      if (window.pageYOffset === 0) return;
-      requestAnimationFrame(scroll);
-    };
-
-    requestAnimationFrame(scroll);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   };
 
   // Scroll to top when activeTab changes
@@ -128,7 +115,7 @@ export default function App() {
 
   const handleLogout = () => {
     setUser(null);
-    setActiveTab('signin');
+    setActiveTab('landing');
   };
 
   const handleTabChange = (tab: string) => {
@@ -161,6 +148,15 @@ export default function App() {
   };
 
   const renderContent = () => {
+    if (activeTab === 'landing') {
+      return (
+        <LandingPage
+          language={language}
+          setActiveTab={handleTabChange}
+        />
+      );
+    }
+
     if (!user) {
       if (activeTab === 'register') {
         return (
@@ -185,7 +181,7 @@ export default function App() {
       case 'home':
         return <Home setActiveTab={handleTabChange} language={language} onCropSelect={handleCropSelect} user={user} />;
       case 'analytics':
-        return <CropAnalytics language={language} preselectedCrop={selectedCrop} onReset={handleResetCrop} />;
+        return <CropAnalytics language={language} preselectedCrop={selectedCrop} onReset={handleResetCrop} user={user} />;
       case 'calculator':
         return <PremiumCalculator language={language} />;
       case 'insurance':
@@ -193,7 +189,7 @@ export default function App() {
       case 'assistant':
         return <Assistant language={language} />;
       case 'reports':
-        return <PreviousReports language={language} onBack={() => handleTabChange('home')} />;
+        return <PreviousReports language={language} onBack={() => handleTabChange('home')} user={user} />;
       case 'profile':
         return <Profile 
           language={language} 
@@ -219,25 +215,7 @@ export default function App() {
           onLogout={handleLogout}
         />
         
-        <main className="container mx-auto px-4 py-8">
-          {activeTab !== 'home' && activeTab !== 'signin' && activeTab !== 'register' && activeTab !== 'reports' && user && (
-            <motion.button
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              onClick={() => handleTabChange('home')}
-              className="flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition-all mb-6 group bg-primary/5 px-4 py-2 rounded-full w-fit border border-primary/10"
-            >
-              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-              {backToHomeT[language] || backToHomeT['en']}
-            </motion.button>
-          )}
-
-          {activeTab === 'home' && user && (
-            <div className="mb-4">
-              <WeatherWidget language={language} user={user} />
-            </div>
-          )}
-          
+        <main className="container mx-auto px-4 pt-6 pb-8 relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -246,12 +224,40 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
             >
+              {['home', 'analytics'].includes(activeTab) && user && (
+                <div className="mb-4">
+                  <WeatherWidget language={language} user={user} />
+                </div>
+              )}
+              {showBackButton && (
+                <div className="mb-6 flex justify-start">
+                  <motion.button
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => handleTabChange('home')}
+                    className="flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80 transition-all group bg-primary/5 px-4 py-2 rounded-full w-fit border border-primary/10 shadow-sm backdrop-blur-sm"
+                  >
+                    <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+                    {backToHomeT[language] || backToHomeT['en']}
+                  </motion.button>
+                </div>
+              )}
               {renderContent()}
             </motion.div>
           </AnimatePresence>
         </main>
 
-        <Footer language={language} setActiveTab={handleTabChange} />
+        {['home', 'landing', 'signin', 'register'].includes(activeTab) && (
+          <motion.div
+            key={`footer-${activeTab}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+          >
+            <Footer language={language} setActiveTab={handleTabChange} />
+          </motion.div>
+        )}
       </div>
     </ThemeProvider>
   );

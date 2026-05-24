@@ -54,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, languag
           {/* Logo Section */}
           <div 
             className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => setActiveTab('home')}
+            onClick={() => setActiveTab(user ? 'home' : 'landing')}
           >
             <div className="relative">
               <Sprout className="h-8 w-8 text-[#22C55E] group-hover:scale-110 transition-transform duration-500" />

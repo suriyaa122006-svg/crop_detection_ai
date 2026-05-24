@@ -10,12 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LanguageCode } from '@/src/lib/languages';
+import { getCropReportsCacheKey, resolveCropReportOwnerIdentity } from '@/src/lib/cropReports';
 import { CropReportCard } from './CropReportCard.tsx';
 import { CropReport, RiskLevel } from '../types.ts';
 
 interface PreviousReportsProps {
   language: LanguageCode;
   onBack: () => void;
+  user?: any;
 }
 
 interface ReportItem {
@@ -46,7 +48,7 @@ interface StoredCropReport {
   pmfbyClaimFiled: boolean;
 }
 
-export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBack }) => {
+export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBack, user }) => {
   const t: Record<string, any> = {
     en: {
       title: "Previous Crop Reports",
@@ -85,6 +87,9 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       unableToLoadReports: "Unable to load reports",
       accurateSuffix: "Accurate",
       loadError: "Failed to load reports",
+      refresh: "Refresh",
+      refreshing: "Refreshing",
+      refreshReportsTitle: "Sync reports",
       capturedOn: "Captured",
       bioDiagnostic: "Bio-Spectrum Diagnostic",
       damageSeverityCard: "Damage Severity",
@@ -137,6 +142,9 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       loadingReports: "फसल रिपोर्ट लोड हो रही हैं...",
       unableToLoadReports: "रिपोर्ट लोड नहीं हो सकीं",
       accurateSuffix: "सटीक",
+      refresh: "रिफ्रेश",
+      refreshing: "रीफ्रेश हो रहा है",
+      refreshReportsTitle: "रिपोर्ट सिंक करें",
       capturedOn: "कैप्चर किया गया",
       bioDiagnostic: "बायो-स्पेक्ट्रम निदान",
       damageSeverityCard: "क्षति की गंभीरता",
@@ -186,6 +194,10 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterDamaged: "ਨੁਕਸਾਨੀ",
       filterHighRisk: "ਉੱਚ ਜੋਖਮ",
       filterModRisk: "ਦਰਮਿਆਨਾ ਜੋਖਮ"
+      ,
+      refresh: "ਤਾਜ਼ਾ ਕਰੋ",
+      refreshing: "ਤਾਜ਼ਾ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ",
+      refreshReportsTitle: "ਰਿਪੋਰਟਾਂ ਸਿੰਕ ਕਰੋ"
     },
     mr: {
       title: "मागील पीक अहवाल",
@@ -220,6 +232,10 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterDamaged: "बाधित",
       filterHighRisk: "उच्च जोखीम",
       filterModRisk: "मध्यम जोखीम"
+      ,
+      refresh: "रिफ्रेश",
+      refreshing: "रिफ्रेश होत आहे",
+      refreshReportsTitle: "रिपोर्ट सिंक करा"
     },
     bn: {
       title: "পূর্ববর্তী ফসলের রিপোর্ট",
@@ -254,6 +270,10 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterDamaged: "আক্রান্ত",
       filterHighRisk: "উচ্চ ঝুঁকি",
       filterModRisk: "মাঝারি ঝুঁকি"
+      ,
+      refresh: "রিফ্রেশ",
+      refreshing: "রিফ্রেশ হচ্ছে",
+      refreshReportsTitle: "রিপোর্ট সিঙ্ক করুন"
     },
     gu: {
       title: "પાછલા પાક અહેવાલો",
@@ -288,6 +308,10 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterDamaged: "નુકસાન પામેલ",
       filterHighRisk: "ઉચ્ચ જોખમ",
       filterModRisk: "મધ્યમ જોખમ"
+      ,
+      refresh: "રિફ્રેશ",
+      refreshing: "રિફ્રેશ થઈ રહ્યું છે",
+      refreshReportsTitle: "રિપોર્ટ્સ સિંક કરો"
     },
     ta: {
       title: "முந்தைய பயிர் அறிக்கைகள்",
@@ -322,6 +346,10 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterDamaged: "பாதிக்கப்பட்டது",
       filterHighRisk: "அதிக ஆபத்து",
       filterModRisk: "மிதமான ஆபத்து"
+      ,
+      refresh: "புதுப்பி",
+      refreshing: "புதுப்பிக்கிறது",
+      refreshReportsTitle: "அறிக்கைகளை ஒத்திசை"
     },
     te: {
       title: "முనుపటి పంట నివేదికలు",
@@ -356,6 +384,10 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterDamaged: "దెబ్బతిన్నవి",
       filterHighRisk: "అధిక ప్రమాదం",
       filterModRisk: "మధ్యస్థ ప్రమాదం"
+      ,
+      refresh: "రిఫ్రెష్",
+      refreshing: "రిఫ్రెష్ అవుతోంది",
+      refreshReportsTitle: "నివేదికలను సమకాలీకరించండి"
     },
     kn: {
       title: "ಹಿಂದಿನ ಬೆಳೆ ವರದಿಗಳು",
@@ -390,6 +422,10 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterDamaged: "ಹಾನಿಗೊಳಗಾದ",
       filterHighRisk: "ಹೆಚ್ಚಿನ ಅಪಾಯ",
       filterModRisk: "ಮಧ್ಯಮ ಅಪಾಯ"
+      ,
+      refresh: "ರಿಫ್ರೆಶ್",
+      refreshing: "ರಿಫ್ರೆಶ್ ಆಗುತ್ತಿದೆ",
+      refreshReportsTitle: "ವರದಿಗಳನ್ನು ಸಿಂಕ್ ಮಾಡಿ"
     },
     ml: {
       title: "മുൻപത്തെ വിള റിപ്പോർട്ടുകൾ",
@@ -424,17 +460,59 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       filterDamaged: "രോഗബാധിതങ്ങൾ",
       filterHighRisk: "ഉയർന്ന അപകടസാധ്യത",
       filterModRisk: "മിതമായ അപകടസാധ്യത"
+      ,
+      refresh: "റിഫ്രെഷ്",
+      refreshing: "റിഫ്രെഷ് ചെയ്യുന്നു",
+      refreshReportsTitle: "റിപ്പോർട്ടുകൾ സിങ്ക് ചെയ്യുക"
     }
   };
 
   const content = t[language] || t['en'];
+  const ownerIdentity = resolveCropReportOwnerIdentity(user);
+  const reportsCacheKey = getCropReportsCacheKey(ownerIdentity?.userMobile);
 
-  const [reports, setReports] = useState<ReportItem[]>([]);
+  const readCachedReports = (): StoredCropReport[] => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+      const cached = window.sessionStorage.getItem(reportsCacheKey);
+      if (!cached) return [];
+
+      const parsed = JSON.parse(cached);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeCachedReports = (items: StoredCropReport[]) => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // Keep cache lightweight to avoid sessionStorage quota issues.
+      const lightweight = items.map((item) => ({ ...item, cropImage: undefined }));
+      window.sessionStorage.setItem(reportsCacheKey, JSON.stringify(lightweight));
+    } catch (error) {
+      console.warn('Unable to cache crop reports in sessionStorage:', error);
+    }
+  };
+
+  const [reports, setReports] = useState<ReportItem[]>(() => readCachedReports().map(mapStoredReportToItem));
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'All' | 'Healthy' | 'Damaged' | 'High Risk' | 'Moderate Risk'>('All');
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
-  const [loadingReports, setLoadingReports] = useState(true);
+  const [loadingReports, setLoadingReports] = useState(() => readCachedReports().length === 0);
+  const [refreshingReports, setRefreshingReports] = useState(false);
   const [reportsError, setReportsError] = useState<string | null>(null);
+
+  const normalizeTranslationKey = (text: string): string =>
+    text
+      .trim()
+      .toLowerCase()
+      .replace(/[’']/g, "'")
+      .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
 
   const translateText = (text: string): string => {
     const dictionary: Record<string, Record<string, string>> = {
@@ -776,8 +854,22 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       }
     };
 
-    if (!dictionary[text]) return text;
-    return dictionary[text][language] || text;
+    const normalizedDictionary = Object.entries(dictionary).reduce((acc, [key, value]) => {
+      acc[normalizeTranslationKey(key)] = value;
+      return acc;
+    }, {} as Record<string, Record<string, string>>);
+
+    const exactMatch = dictionary[text];
+    if (exactMatch) {
+      return exactMatch[language] || text;
+    }
+
+    const normalizedMatch = normalizedDictionary[normalizeTranslationKey(text)];
+    if (normalizedMatch) {
+      return normalizedMatch[language] || text;
+    }
+
+    return text;
   };
 
   const translateFilter = (opt: string): string => {
@@ -813,21 +905,32 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
   }, []);
 
   useEffect(() => {
+    if (!ownerIdentity?.userMobile) {
+      setReports([]);
+      setLoadingReports(false);
+      setReportsError(null);
+      return;
+    }
+
     const controller = new AbortController();
+    const cachedReports = readCachedReports();
+
+    if (cachedReports.length > 0) {
+      setReports(cachedReports.map(mapStoredReportToItem));
+      setLoadingReports(false);
+      setReportsError(null);
+    } else {
+      setLoadingReports(true);
+    }
 
     const loadReports = async () => {
       try {
-        setLoadingReports(true);
         setReportsError(null);
 
-        const response = await fetch('/api/cropreports', { signal: controller.signal });
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || `HTTP error! status: ${response.status}`);
-        }
-
-        const data: StoredCropReport[] = await response.json();
+        const data = await fetchReportsFromServer(controller.signal);
+        writeCachedReports(data);
         setReports(data.map(mapStoredReportToItem));
+        setReportsError(null);
       } catch (error: any) {
         if (error?.name !== 'AbortError') {
           setReportsError(error?.message || content.loadError || t.en.loadError);
@@ -841,7 +944,23 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
     loadReports();
 
     return () => controller.abort();
-  }, []);
+  }, [ownerIdentity?.userMobile, reportsCacheKey]);
+
+  const handleRefreshReports = async () => {
+    if (!ownerIdentity?.userMobile) return;
+
+    setRefreshingReports(true);
+    try {
+      setReportsError(null);
+      const data = await fetchReportsFromServer();
+      writeCachedReports(data);
+      setReports(data.map(mapStoredReportToItem));
+    } catch (error: any) {
+      setReportsError(error?.message || content.loadError || t.en.loadError);
+    } finally {
+      setRefreshingReports(false);
+    }
+  };
 
   // Helper function to convert ReportItem to CropReport
   const convertToCropReport = (item: ReportItem): CropReport => {
@@ -875,7 +994,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
     };
   };
 
-  const mapStoredReportToItem = (report: StoredCropReport): ReportItem => {
+  function mapStoredReportToItem(report: StoredCropReport): ReportItem {
     const damage = Number(report.damageSeverity || 0);
     const confidence = Number(report.confidenceScore || 0);
     const status = report.status === 'Healthy' || report.status === 'Moderate Risk' || report.status === 'Severe Damage'
@@ -898,12 +1017,28 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       details: report.treatmentSuggestions.length > 0 ? report.treatmentSuggestions.join(' ') : report.detectedCondition,
       recommendations: report.treatmentSuggestions,
     };
+  }
+
+  const fetchReportsFromServer = async (signal?: AbortSignal) => {
+    if (!ownerIdentity?.userMobile) {
+      return [] as StoredCropReport[];
+    }
+
+    const response = await fetch(`/api/cropreports?mobile=${encodeURIComponent(ownerIdentity.userMobile)}`, { signal });
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json() as Promise<StoredCropReport[]>;
   };
 
   const handleDelete = async (id: string) => {
     try {
       const response = await fetch(`/api/cropreports/${id}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userMobile: ownerIdentity?.userMobile }),
       });
 
       if (!response.ok) {
@@ -914,6 +1049,11 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       setReports(prev => prev.filter(r => r.id !== id));
       if (selectedReport?.id === id) {
         setSelectedReport(null);
+      }
+
+      if (typeof window !== 'undefined') {
+        const cachedReports = readCachedReports().filter((report) => (report._id || `${report.fileName}-${report.capturedAt}`) !== id);
+        writeCachedReports(cachedReports);
       }
     } catch (error) {
       console.error('Failed to delete crop report:', error);
@@ -1011,7 +1151,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       </div>
 
       {/* Statistics Section */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="border-none shadow-md bg-white dark:bg-zinc-900 border-l-4 border-l-primary overflow-hidden">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -1057,6 +1197,25 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
               <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">{content.aiAccuracy}</p>
               <h3 className="text-xl font-black text-foreground">{avgAccuracy}%</h3>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-md bg-white dark:bg-zinc-900 border-l-4 border-l-sky-500 overflow-hidden">
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">{content.refreshReportsTitle || t.en.refreshReportsTitle}</p>
+              <h3 className="text-sm font-black text-foreground">{content.refreshReportsTitle || t.en.refreshReportsTitle}</h3>
+            </div>
+            <Button
+              onClick={handleRefreshReports}
+              disabled={refreshingReports}
+              size="sm"
+              variant="outline"
+              className="rounded-full font-bold border-sky-500/20 bg-white text-sky-700 hover:bg-sky-500/5 dark:bg-neutral-950 dark:text-sky-300"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshingReports ? 'animate-spin' : ''}`} />
+              {refreshingReports ? (content.refreshing || t.en.refreshing) : (content.refresh || t.en.refresh)}
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -1170,20 +1329,20 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       {/* Modal Dialog for detailed report view */}
       <AnimatePresence>
         {selectedReport && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 md:p-4 z-50">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-background border border-border rounded-[28px] max-w-md w-full shadow-2xl overflow-hidden"
+              className="bg-background border border-border rounded-[24px] w-full max-w-sm md:max-w-md h-[min(88vh,760px)] shadow-2xl overflow-hidden flex flex-col"
             >
               {/* Dual-color banner */}
-              <div className="bg-zinc-950 dark:bg-white text-zinc-100 dark:text-zinc-950 p-6 border-b border-zinc-900 dark:border-neutral-200 transition-colors relative">
+              <div className="bg-zinc-950 dark:bg-white text-zinc-100 dark:text-zinc-950 p-4 md:p-5 border-b border-zinc-900 dark:border-neutral-200 transition-colors relative">
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-black tracking-widest text-[#2e7d32] dark:text-green-600 bg-[#2e7d32]/10 dark:bg-green-600/10 px-2.5 py-0.5 rounded-full">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-[#2e7d32] dark:text-green-600 bg-[#2e7d32]/10 dark:bg-green-600/10 px-2.5 py-0.5 rounded-full inline-block">
                     {content.reportDetails}
                   </span>
-                  <h3 className="text-2xl font-black mt-2 leading-tight">
+                  <h3 className="text-xl md:text-2xl font-black mt-2 leading-tight">
                     {translateText(selectedReport.cropName)} {content.cropStatus}
                   </h3>
                   <p className="text-xs text-zinc-400 dark:text-zinc-500 flex items-center gap-1 mt-1 font-semibold">
@@ -1192,47 +1351,51 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
                 </div>
               </div>
 
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-muted/45 p-3 rounded-xl border border-border/10">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground">{content.diagnostic}</span>
-                    <p className="font-extrabold text-foreground text-sm mt-0.5">{translateText(selectedReport.disease)}</p>
+              <div className="flex-1 min-h-0 p-4 md:p-5">
+                <div className="h-full rounded-2xl border border-border/70 bg-muted/20 p-4 md:p-5 space-y-4 md:space-y-5 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="grid grid-cols-2 gap-3 md:gap-4">
+                    <div className="bg-background/85 p-3 rounded-xl border border-border/10 shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground">{content.diagnostic}</span>
+                      <p className="font-extrabold text-foreground text-sm mt-0.5 leading-snug">{translateText(selectedReport.disease)}</p>
+                    </div>
+                    <div className="bg-background/85 p-3 rounded-xl border border-border/10 shadow-sm">
+                      <span className="text-[10px] uppercase font-bold text-muted-foreground">{content.confidence}</span>
+                      <p className="font-extrabold text-primary text-sm mt-0.5">{selectedReport.confidence}% {content.accurateSuffix || t.en.accurateSuffix}</p>
+                    </div>
                   </div>
-                  <div className="bg-muted/45 p-3 rounded-xl border border-border/10">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground">{content.confidence}</span>
-                    <p className="font-extrabold text-primary text-sm mt-0.5">{selectedReport.confidence}% {content.accurateSuffix || t.en.accurateSuffix}</p>
+
+                  <div className="space-y-1.5 bg-background/85 rounded-xl border border-border/10 p-3 shadow-sm">
+                    <span className="text-xs font-bold text-muted-foreground">{content.summary}</span>
+                    <p className="text-xs text-foreground/80 leading-relaxed font-semibold">
+                      {translateText(selectedReport.details)}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 bg-background/85 rounded-xl border border-border/10 p-3 shadow-sm">
+                    <span className="text-xs font-bold text-muted-foreground">{content.recommendations}</span>
+                    <div className="space-y-1.5">
+                      {selectedReport.recommendations.map((rec, idx) => (
+                        <div key={idx} className="flex gap-2 items-start text-xs text-foreground/90 font-medium rounded-lg border border-border/10 bg-muted/30 p-2">
+                          <span className="h-5 w-5 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">{idx + 1}</span>
+                          <p className="mt-0.5 font-semibold leading-normal">{translateText(rec)}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-1.5">
-                  <span className="text-xs font-bold text-muted-foreground">{content.summary}</span>
-                  <p className="text-xs text-foreground/80 leading-relaxed font-semibold">
-                    {translateText(selectedReport.details)}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <span className="text-xs font-bold text-muted-foreground">{content.recommendations}</span>
-                  <div className="space-y-1.5">
-                    {selectedReport.recommendations.map((rec, idx) => (
-                      <div key={idx} className="flex gap-2 items-start text-xs text-foreground/90 font-medium">
-                        <span className="h-5 w-5 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">{idx + 1}</span>
-                        <p className="mt-0.5 font-semibold leading-normal">{translateText(rec)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
+              <div className="border-t border-border/70 bg-background/95 p-4 md:p-5">
+                <div className="flex gap-2">
                   <Button 
-                    className="flex-1 bg-primary hover:bg-primary/95 text-white font-bold rounded-full py-6"
+                    className="flex-1 bg-white hover:bg-neutral-100 text-neutral-950 font-bold rounded-full py-4 border border-neutral-200 dark:bg-white dark:text-neutral-950"
                     onClick={() => handleDownloadPDF(selectedReport)}
                   >
                     <Download className="h-4 w-4 mr-2" /> {content.downloadDoc}
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="font-bold border-border rounded-full py-6 text-neutral-900 dark:text-foreground"
+                    className="font-bold border-border rounded-full py-4 text-neutral-900 dark:text-foreground"
                     onClick={() => setSelectedReport(null)}
                   >
                     {content.close}

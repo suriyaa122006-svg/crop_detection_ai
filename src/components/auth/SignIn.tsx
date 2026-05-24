@@ -5,6 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { LanguageCode } from '@/src/lib/languages';
 
 console.log('SIGNIN LOADED');
@@ -21,6 +29,20 @@ export const SignIn: React.FC<SignInProps> = ({ language, setActiveTab, onLogin 
   const [captchaInput, setCaptchaInput] = useState('');
   const [generatedCaptcha, setGeneratedCaptcha] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<'form' | 'confirm'>('form');
+  const [deleteMobile, setDeleteMobile] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmPassword, setDeleteConfirmPassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
+  const [forgotMobile, setForgotMobile] = useState('');
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [isRequestingForgot, setIsRequestingForgot] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [tempExpiresAt, setTempExpiresAt] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
 
   const generateCaptcha = React.useCallback(() => {
     const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -36,6 +58,146 @@ export const SignIn: React.FC<SignInProps> = ({ language, setActiveTab, onLogin 
   React.useEffect(() => {
     generateCaptcha();
   }, [generateCaptcha]);
+
+  const openDeleteDialog = () => {
+    setIsDeleteDialogOpen(true);
+    setDeleteStep('form');
+    setDeleteMobile('');
+    setDeletePassword('');
+    setDeleteConfirmPassword('');
+    setDeleteError(null);
+  };
+
+  const openForgotDialog = () => {
+    setIsForgotOpen(true);
+    setForgotMobile('');
+    setForgotError(null);
+    setTempPassword(null);
+    setTempExpiresAt(null);
+    setRemainingSeconds(0);
+  };
+
+  const closeForgotDialog = () => {
+    setIsForgotOpen(false);
+    setForgotError(null);
+    setTempPassword(null);
+    setTempExpiresAt(null);
+    setRemainingSeconds(0);
+  };
+
+  React.useEffect(() => {
+    let timer: any = null;
+    if (tempExpiresAt) {
+      const update = () => {
+        const now = Date.now();
+        const diff = Math.max(0, Math.ceil((tempExpiresAt - now) / 1000));
+        setRemainingSeconds(diff);
+        if (diff <= 0 && timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      };
+      update();
+      timer = setInterval(update, 1000);
+    }
+    return () => { if (timer) clearInterval(timer); };
+  }, [tempExpiresAt]);
+
+  const handleForgotSubmit = async () => {
+    setForgotError(null);
+    if (!forgotMobile || forgotMobile.length !== 10) {
+      setForgotError('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    // If we already have a temp password and it's not expired, just keep showing it
+    if (tempPassword && tempExpiresAt && tempExpiresAt > Date.now()) {
+      return;
+    }
+
+    setIsRequestingForgot(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile: forgotMobile })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setForgotError(data.message || data.error || 'Unable to generate temporary password');
+        return;
+      }
+
+      if (data.tempPassword && data.expiresAt) {
+        setTempPassword(data.tempPassword);
+        setTempExpiresAt(Number(data.expiresAt));
+      } else {
+        setForgotError('Unexpected response from server');
+      }
+    } catch (err) {
+      setForgotError('Unable to request temporary password right now');
+    } finally {
+      setIsRequestingForgot(false);
+    }
+  };
+
+  const closeDeleteDialog = () => {
+    setIsDeleteDialogOpen(false);
+    setDeleteStep('form');
+    setDeleteError(null);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteStep === 'form') {
+      if (!deleteMobile || !deletePassword || !deleteConfirmPassword) {
+        setDeleteError('Please enter mobile number, password, and confirm password.');
+        return;
+      }
+
+      if (deletePassword !== deleteConfirmPassword) {
+        setDeleteError('Password and confirm password must match.');
+        return;
+      }
+
+      setDeleteError(null);
+      setDeleteStep('confirm');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const res = await fetch('/api/auth/delete-account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mobile: deleteMobile,
+          password: deletePassword,
+          confirmPassword: deleteConfirmPassword,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteError(data.message || data.error || 'Failed to delete account');
+        return;
+      }
+
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      closeDeleteDialog();
+      setMobile('');
+      setPassword('');
+      setCaptchaInput('');
+      setError(null);
+      generateCaptcha();
+    } catch {
+      setDeleteError('Unable to delete account right now. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleLoginSubmit = async (
     event?: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>
@@ -409,11 +571,15 @@ export const SignIn: React.FC<SignInProps> = ({ language, setActiveTab, onLogin 
                 </Button>
 
                 <div className="flex flex-col items-center gap-2 pt-2">
-                  <button type="button" className="text-sm text-primary hover:underline font-medium">
+                  <button type="button" className="text-sm text-primary hover:underline font-medium" onClick={openForgotDialog}>
                     {content.forgot}
                   </button>
-                  <button type="button" className="text-sm text-destructive hover:underline font-medium">
-                    {content.deactivate}
+                  <button
+                    type="button"
+                    className="text-sm text-destructive hover:underline font-medium"
+                    onClick={openDeleteDialog}
+                  >
+                    Delete Account
                   </button>
                 </div>
 
@@ -434,6 +600,188 @@ export const SignIn: React.FC<SignInProps> = ({ language, setActiveTab, onLogin 
           </div>
         </div>
       </Card>
+
+      <Dialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsDeleteDialogOpen(true);
+            return;
+          }
+
+          closeDeleteDialog();
+        }}
+      >
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-md border-border bg-background text-foreground shadow-2xl">
+          <DialogHeader className="space-y-2 pr-8">
+            <DialogTitle className="text-xl font-bold">
+              {deleteStep === 'form' ? 'Delete Account' : 'Are you sure you want to delete this account?'}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              {deleteStep === 'form'
+                ? 'Enter your registered mobile number, password, and confirm password to continue.'
+                : 'This action cannot be undone.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteStep === 'form' ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground/80">Mobile No. *</Label>
+                <Input
+                  placeholder="Enter Mobile No."
+                  value={deleteMobile}
+                  onChange={(event) => {
+                    setDeleteMobile(event.target.value.replace(/\D/g, '').slice(0, 10));
+                    setDeleteError(null);
+                  }}
+                  className="bg-muted/30 border-muted focus:bg-background"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground/80">Password *</Label>
+                <Input
+                  type="password"
+                  placeholder="Enter Password"
+                  value={deletePassword}
+                  onChange={(event) => {
+                    setDeletePassword(event.target.value);
+                    setDeleteError(null);
+                  }}
+                  className="bg-muted/30 border-muted focus:bg-background"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground/80">Confirm Password *</Label>
+                <Input
+                  type="password"
+                  placeholder="Confirm Password"
+                  value={deleteConfirmPassword}
+                  onChange={(event) => {
+                    setDeleteConfirmPassword(event.target.value);
+                    setDeleteError(null);
+                  }}
+                  className="bg-muted/30 border-muted focus:bg-background"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4">
+              <p className="text-sm font-semibold text-foreground">Are you sure you want to delete this account?</p>
+              <p className="mt-1 text-sm text-muted-foreground">This action cannot be undone.</p>
+            </div>
+          )}
+
+          {deleteError && (
+            <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+              {deleteError}
+            </p>
+          )}
+
+          <DialogFooter className="bg-muted/30 border-t border-border sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeDeleteDialog}
+              className="border-border bg-background text-foreground hover:bg-muted"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDeleteAccount}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : deleteStep === 'form' ? 'Delete' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog
+        open={isForgotOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsForgotOpen(true);
+            return;
+          }
+
+          closeForgotDialog();
+        }}
+      >
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-md border-border bg-background text-foreground shadow-2xl">
+          <DialogHeader className="space-y-2 pr-8">
+            <DialogTitle className="text-xl font-bold">Forgot Password</DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">Enter your registered mobile number to generate a temporary password valid for 3 minutes.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-foreground/80">Mobile No. *</Label>
+              <Input
+                placeholder={content.mobilePlaceholder}
+                value={forgotMobile}
+                onChange={(event) => {
+                  setForgotMobile(event.target.value.replace(/\D/g, '').slice(0, 10));
+                  setForgotError(null);
+                }}
+                className="bg-muted/30 border-muted focus:bg-background"
+              />
+            </div>
+
+            {tempPassword && (
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-foreground/80">Temporary Password</Label>
+                <div className="flex items-center gap-2">
+                  <Input readOnly value={tempPassword} className="font-mono" />
+                  <div className="text-sm text-muted-foreground">{remainingSeconds > 0 ? `Expires in ${remainingSeconds}s` : 'Expired'}</div>
+                </div>
+                <p className="text-xs text-muted-foreground">Use this password to login. It will be valid for 3 minutes.</p>
+              </div>
+            )}
+
+            {forgotError && (
+              <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">{forgotError}</p>
+            )}
+          </div>
+
+          <DialogFooter className="bg-muted/30 border-t border-border sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeForgotDialog}
+              className="border-border bg-background text-foreground hover:bg-muted"
+              disabled={isRequestingForgot}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                // If password exists and not expired, allow close. Otherwise request.
+                if (tempPassword && tempExpiresAt && tempExpiresAt > Date.now()) {
+                  // keep dialog open so user can copy; we'll not auto-close
+                  return;
+                }
+                if (remainingSeconds <= 0 && tempPassword) {
+                  // expired -> just close
+                  closeForgotDialog();
+                  return;
+                }
+                await handleForgotSubmit();
+              }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              disabled={isRequestingForgot}
+            >
+              {isRequestingForgot ? 'Requesting...' : tempPassword && remainingSeconds <= 0 ? 'Close' : 'Submit'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

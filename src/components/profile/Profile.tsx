@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { LanguageCode } from '@/src/lib/languages';
+import { INDIA_DISTRICTS_BY_STATE, INDIA_STATES } from '@/src/lib/indiaLocations';
 
 interface ProfileProps {
   language: LanguageCode;
@@ -25,6 +26,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [saveSummary, setSaveSummary] = useState<{ title: string; details: string[] } | null>(null);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     mobile: user?.mobile || '',
@@ -61,11 +63,38 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
     });
   }, [user]);
 
+  useEffect(() => {
+    setStateQuery(formData.state);
+  }, [formData.state]);
+
+  useEffect(() => {
+    setDistrictQuery(formData.district);
+  }, [formData.district]);
+
   const [isEditing, setIsEditing] = useState(false);
   const [isPasswordTouched, setIsPasswordTouched] = useState(false);
   const [isPasswordConfirmed, setIsPasswordConfirmed] = useState(false);
   const [passwordStatusMessage, setPasswordStatusMessage] = useState('');
+  const [stateQuery, setStateQuery] = useState('');
+  const [isStateOpen, setIsStateOpen] = useState(false);
+  const [districtQuery, setDistrictQuery] = useState('');
+  const [isDistrictOpen, setIsDistrictOpen] = useState(false);
   const hasPendingPasswordChange = isEditing && formData.newPassword !== '' && !isPasswordConfirmed;
+
+  const filteredStates = React.useMemo(() => {
+    const query = stateQuery.trim().toLowerCase();
+    if (!query) return INDIA_STATES;
+    return INDIA_STATES.filter((stateName) => stateName.toLowerCase().includes(query));
+  }, [stateQuery]);
+
+  const filteredDistricts = React.useMemo(() => {
+    const query = districtQuery.trim().toLowerCase();
+    if (!formData.state) return [];
+
+    const districts = INDIA_DISTRICTS_BY_STATE[formData.state] || [];
+    if (!query) return districts;
+    return districts.filter((districtName) => districtName.toLowerCase().includes(query));
+  }, [districtQuery, formData.state]);
 
   const t: Record<string, any> = {
     en: {
@@ -109,7 +138,11 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
       townName: "Town Name",
       townPlaceholder: "Enter Town Name",
       villageName: "Village Name",
-      villagePlaceholder: "Enter Village Name"
+      villagePlaceholder: "Enter Village Name",
+      saveSummaryTitle: "Profile saved",
+      saveSummaryPrefix: "Updated fields",
+      noChanges: "No profile details changed",
+      passwordUpdated: "Password updated"
     },
     hi: {
       title: "उपयोगकर्ता प्रोफ़ाइल",
@@ -358,6 +391,64 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
 
   const content = t[language] || t['en'];
 
+  const getProfileSnapshot = (source: any) => ({
+    name: source?.name || '',
+    mobile: source?.mobile || source?.registrationData?.mobile || '',
+    email: source?.email || source?.registrationData?.email || '',
+    aadhar: source?.aadhar || source?.registrationData?.aadhar || '',
+    bankName: source?.bankName || source?.registrationData?.bankName || '',
+    branchName: source?.branchName || source?.registrationData?.branchName || '',
+    bankAcc: source?.bankAcc || source?.registrationData?.bankAcc || '',
+    state: source?.state || source?.registrationData?.state || '',
+    district: source?.district || source?.registrationData?.district || '',
+    bankType: source?.bankType || source?.registrationData?.bankType || 'Commercial',
+    townName: source?.townName || source?.registrationData?.townName || '',
+    villageName: source?.villageName || source?.registrationData?.villageName || ''
+  });
+
+  const buildSaveSummary = (before: Record<string, string>, after: Record<string, string>, passwordChanged: boolean) => {
+    const fieldLabels: Record<string, string> = {
+      mobile: content.mobile,
+      email: content.email,
+      bankName: content.bankName,
+      branchName: content.branchName,
+      bankAcc: content.bankAcc,
+      bankType: content.bankType || t.en.bankType,
+      state: content.state,
+      district: content.district,
+      townName: content.townName || t.en.townName,
+      villageName: content.villageName || t.en.villageName
+    };
+
+    const formatSummaryValue = (field: string, value: string) => {
+      if (field === 'bankAcc' && value) {
+        return value.length > 4 ? `****${value.slice(-4)}` : '****';
+      }
+
+      return value;
+    };
+
+    const details = Object.keys(fieldLabels)
+      .filter((field) => before[field] !== after[field])
+      .map((field) => `${fieldLabels[field]}: ${formatSummaryValue(field, after[field])}`);
+
+    if (passwordChanged) {
+      details.unshift(content.passwordUpdated || t.en.passwordUpdated);
+    }
+
+    return details.length ? details : [content.noChanges || t.en.noChanges];
+  };
+
+  useEffect(() => {
+    if (!saveSummary) return;
+
+    const timer = window.setTimeout(() => {
+      setSaveSummary(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timer);
+  }, [saveSummary]);
+
   const handleSave = () => {
     const trimmedMobile = formData.mobile.trim();
     const trimmedEmail = formData.email.trim();
@@ -385,9 +476,16 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
       newPassword: ''
     };
 
+    const previousProfile = getProfileSnapshot(user);
+    const nextProfile = {
+      ...getProfileSnapshot(updatedData),
+      name: updatedData.name || ''
+    };
+
     const persistProfile = async () => {
       setIsSaving(true);
       setSaveError('');
+      setSaveSummary(null);
 
       try {
         const userIdentifier = user?._id || user?.id || user?.mobile;
@@ -412,6 +510,10 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
         setIsPasswordTouched(false);
         setIsPasswordConfirmed(false);
         setPasswordStatusMessage('');
+        setSaveSummary({
+          title: content.saveSummaryTitle || t.en.saveSummaryTitle,
+          details: buildSaveSummary(previousProfile, nextProfile, Boolean(formData.newPassword && isPasswordConfirmed))
+        });
       } catch (error: any) {
         setSaveError(error?.message || 'Profile update failed');
       } finally {
@@ -450,11 +552,31 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-12">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-3xl font-extrabold text-foreground">{content.title}</h1>
           <p className="text-muted-foreground">{content.description}</p>
         </div>
+        {saveSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            className="w-full md:max-w-md rounded-2xl border border-emerald-200 bg-emerald-50/95 px-4 py-3 shadow-lg backdrop-blur dark:border-emerald-900/40 dark:bg-emerald-950/40"
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-full bg-emerald-500/15 p-2 text-emerald-600 dark:text-emerald-300">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-extrabold text-emerald-950 dark:text-emerald-100">{saveSummary.title}</p>
+                <p className="text-xs font-medium text-emerald-800 dark:text-emerald-200">
+                  {content.saveSummaryPrefix || t.en.saveSummaryPrefix}: {saveSummary.details.join(' · ')}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
@@ -685,21 +807,105 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>{content.state}</Label>
-                    <Input 
-                      disabled={!isEditing} 
-                      value={formData.state} 
-                      onChange={(e) => setFormData({...formData, state: e.target.value})}
-                      className="bg-muted/30"
-                    />
+                    <div className="relative">
+                      <Input
+                        disabled={!isEditing}
+                        value={isStateOpen ? stateQuery : formData.state}
+                        onFocus={() => {
+                          if (!isEditing) return;
+                          setIsStateOpen(true);
+                          setStateQuery(formData.state);
+                        }}
+                        onBlur={() => {
+                          window.setTimeout(() => setIsStateOpen(false), 120);
+                        }}
+                        onChange={(e) => {
+                          if (!isEditing) return;
+                          const nextValue = e.target.value;
+                          setStateQuery(nextValue);
+                          setFormData((current) => ({ ...current, state: '', district: '' }));
+                          setDistrictQuery('');
+                          setIsDistrictOpen(false);
+                          setIsStateOpen(true);
+                        }}
+                        className="bg-muted/30"
+                      />
+                      {isStateOpen && isEditing && (
+                        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+                          <div className="max-h-36 overflow-y-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                            {filteredStates.map((stateName) => (
+                              <button
+                                key={stateName}
+                                type="button"
+                                className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  setFormData((current) => ({ ...current, state: stateName, district: '' }));
+                                  setStateQuery(stateName);
+                                  setDistrictQuery('');
+                                  setIsStateOpen(false);
+                                  setIsDistrictOpen(false);
+                                }}
+                              >
+                                {stateName}
+                              </button>
+                            ))}
+                            {filteredStates.length === 0 && (
+                              <div className="px-3 py-2 text-sm text-muted-foreground">No matching state found.</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>{content.district}</Label>
-                    <Input 
-                      disabled={!isEditing} 
-                      value={formData.district} 
-                      onChange={(e) => setFormData({...formData, district: e.target.value})}
-                      className="bg-muted/30"
-                    />
+                    <div className="relative">
+                      <Input
+                        disabled={!isEditing || !formData.state}
+                        value={isDistrictOpen ? districtQuery : formData.district}
+                        onFocus={() => {
+                          if (!isEditing || !formData.state) return;
+                          setIsDistrictOpen(true);
+                          setDistrictQuery(formData.district);
+                        }}
+                        onBlur={() => {
+                          window.setTimeout(() => setIsDistrictOpen(false), 120);
+                        }}
+                        onChange={(e) => {
+                          if (!isEditing || !formData.state) return;
+                          const nextValue = e.target.value;
+                          setDistrictQuery(nextValue);
+                          setFormData((current) => ({ ...current, district: '' }));
+                          setIsDistrictOpen(true);
+                        }}
+                        className="bg-muted/30"
+                      />
+                      {isDistrictOpen && isEditing && formData.state && (
+                        <div className="absolute left-0 right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
+                          <div className="max-h-36 overflow-y-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                            {filteredDistricts.map((districtName) => (
+                              <button
+                                key={districtName}
+                                type="button"
+                                className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  setFormData((current) => ({ ...current, district: districtName }));
+                                  setDistrictQuery(districtName);
+                                  setIsDistrictOpen(false);
+                                }}
+                              >
+                                {districtName}
+                              </button>
+                            ))}
+                            {filteredDistricts.length === 0 && (
+                              <div className="px-3 py-2 text-sm text-muted-foreground">No matching district found.</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>{content.townName || t.en.townName}</Label>

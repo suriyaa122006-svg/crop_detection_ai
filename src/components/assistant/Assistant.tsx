@@ -4,7 +4,6 @@ import { Send, User, Bot, Loader2, Image as ImageIcon, Sparkles, MessageSquare, 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { getAssistantResponse } from '@/src/services/geminiService';
 import { Badge } from '@/components/ui/badge';
 import { LanguageCode } from '@/src/lib/languages';
@@ -23,7 +22,7 @@ export const Assistant: React.FC<AssistantProps> = ({ language }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesViewportRef = useRef<HTMLDivElement>(null);
 
   const t: Record<string, any> = {
     en: {
@@ -200,9 +199,20 @@ export const Assistant: React.FC<AssistantProps> = ({ language }) => {
   }, [language, content.greeting]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    requestAnimationFrame(() => {
+      const viewport = messagesViewportRef.current;
+      if (!viewport) return;
+
+      const userMessages = viewport.querySelectorAll<HTMLElement>('[data-message-role="user"]');
+      const targetMessage = userMessages[userMessages.length - 1];
+
+      if (targetMessage) {
+        targetMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      viewport.scrollTop = viewport.scrollHeight;
+    });
   }, [messages]);
 
   const handleSend = async () => {
@@ -243,8 +253,8 @@ export const Assistant: React.FC<AssistantProps> = ({ language }) => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] min-h-[750px] flex flex-col pb-4 relative">
-      <Card className="flex-grow flex flex-col overflow-hidden border-primary/20 shadow-2xl mb-4">
+    <div className="max-w-5xl mx-auto w-full h-[calc(100vh-12rem)] min-h-[600px] max-h-[760px] flex flex-col pb-3 relative">
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden border-primary/20 shadow-2xl mb-3">
         <CardHeader className="border-b bg-primary/5 flex flex-row items-center justify-between py-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
@@ -269,14 +279,18 @@ export const Assistant: React.FC<AssistantProps> = ({ language }) => {
           </div>
         </CardHeader>
 
-        <CardContent className="flex-grow p-0 overflow-hidden relative bg-muted/5">
-          <ScrollArea className="h-full p-4 sm:p-8" ref={scrollRef}>
+        <CardContent className="flex-1 min-h-0 p-0 overflow-hidden relative bg-muted/5">
+          <div
+            ref={messagesViewportRef}
+            className="h-full overflow-y-auto p-4 sm:p-6 lg:p-7 scroll-smooth"
+          >
             <div className="space-y-6 max-w-4xl mx-auto">
               {messages.map((m, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
+                  data-message-role={m.role}
                   className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`flex gap-3 max-w-[90%] sm:max-w-[80%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -314,7 +328,7 @@ export const Assistant: React.FC<AssistantProps> = ({ language }) => {
                 </motion.div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </CardContent>
 
         <CardFooter className="p-4 sm:p-6 border-t bg-card">

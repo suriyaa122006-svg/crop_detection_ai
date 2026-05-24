@@ -114,8 +114,29 @@ router.post("/login", async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "No account found" });
     }
+    
+    // First try normal password
+    let isMatch = false;
+    if (user.password) {
+      isMatch = await bcrypt.compare(password, user.password);
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // If normal password didn't match, check temporary password (if still valid)
+    if (!isMatch && user.tempPasswordHash && user.tempPasswordExpires) {
+      const now = Date.now();
+      const expiresAt = new Date(user.tempPasswordExpires).getTime();
+      if (expiresAt > now) {
+        const tempMatch = await bcrypt.compare(password, user.tempPasswordHash);
+        if (tempMatch) {
+          isMatch = true;
+          // clear temp password after use
+          user.tempPasswordHash = undefined as any;
+          user.tempPasswordExpires = undefined as any;
+          await user.save();
+        }
+      }
+    }
+
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -134,6 +155,66 @@ router.post("/login", async (req, res) => {
 
   } catch (error) {
     const message = error instanceof Error ? error.message : "Login failed";
+    res.status(500).json({ error: message });
+  }
+});
+
+// FORGOT PASSWORD - generate a temporary password valid for 3 minutes
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { mobile } = req.body || {};
+    if (!mobile) return res.status(400).json({ message: "Mobile number is required" });
+
+    const user = await User.findOne({ mobile });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // generate a random 8 character alphanumeric temporary password
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    let tempPassword = '';
+    for (let i = 0; i < 8; i++) tempPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+
+    const hashed = await bcrypt.hash(tempPassword, 10);
+    const expiresAt = Date.now() + 3 * 60 * 1000; // 3 minutes
+
+    user.tempPasswordHash = hashed as any;
+    user.tempPasswordExpires = new Date(expiresAt) as any;
+    await user.save();
+
+    // NOTE: In production you should send this via SMS/Email. Returning in response for UI demo per requirements.
+    res.json({ message: 'Temporary password generated', tempPassword, expiresAt });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to generate temporary password";
+    res.status(500).json({ error: message });
+  }
+});
+
+router.delete("/delete-account", async (req, res) => {
+  try {
+    const { mobile, password, confirmPassword } = req.body || {};
+
+    if (!mobile || !password || !confirmPassword) {
+      return res.status(400).json({ message: "Mobile number, password, and confirm password are required" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Password and confirm password do not match" });
+    }
+
+    const user = await User.findOne({ mobile });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    await User.findByIdAndDelete(user._id);
+
+    res.json({ message: "Account deleted successfully" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete account";
     res.status(500).json({ error: message });
   }
 });
