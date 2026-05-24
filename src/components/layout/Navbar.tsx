@@ -283,7 +283,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, languag
                 ) : (
                   <Button 
                     variant="outline" 
-                    className="text-white border-white/20 hover:bg-red-500/20 hover:text-red-400"
+                    className="text-black bg-white border-zinc-200 hover:bg-red-500/20 hover:text-red-500 dark:text-white dark:bg-transparent dark:border-white/20 dark:hover:text-red-400"
                     onClick={onLogout}
                   >
                     {content.auth.logout}

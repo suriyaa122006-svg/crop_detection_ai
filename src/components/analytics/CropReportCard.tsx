@@ -5,6 +5,7 @@ import { CropReport, RiskLevel } from '../types';
 interface CropReportCardProps {
   report: CropReport;
   isDarkMode: boolean;
+  translateText: (text: string) => string;
   labels?: {
     riskHigh: string;
     riskModerate: string;
@@ -14,6 +15,7 @@ interface CropReportCardProps {
     bioDiagnostic: string;
     damageSeverity: string;
     aiValidationConfidence: string;
+    severityThreshold: string;
     urgentAction: string;
     monitorMessage: string;
     stableMessage: string;
@@ -78,6 +80,7 @@ const getCropGradient = (code: string) => {
 export const CropReportCard: React.FC<CropReportCardProps> = ({
   report,
   isDarkMode,
+  translateText,
   labels,
   onViewReport,
   onDownloadPDF,
@@ -86,6 +89,11 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
   const risk = getRiskStyles(report.riskLevel, isDarkMode, labels);
   const cropGrad = getCropGradient(report.cropCode);
   const avatarFallback = report.cropName.slice(0, 2).toUpperCase();
+  const translatedRecommendation = report.recommendation
+    .split(/\r?\n|\s*;\s*/)
+    .filter(Boolean)
+    .map((line) => translateText(line.trim()))
+    .join('\n');
 
   return (
     <div
@@ -131,7 +139,7 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
           <div className="space-y-1.5 min-w-0">
             <div className="flex items-center gap-2 min-w-0">
               <h3 className={`font-display text-2xl font-black tracking-tight transition-colors duration-300 truncate ${isDarkMode ? 'text-white' : 'text-neutral-900'}`}>
-                {report.cropName}
+                {translateText(report.cropName)}
               </h3>
               <Sparkles className="w-4 h-4 text-amber-500 animate-pulse hidden md:block shrink-0" />
             </div>
@@ -140,7 +148,7 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
               <div className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500/10 shrink-0">
                 <Calendar className="w-3.5 h-3.5 text-indigo-500" />
               </div>
-              <span>{labels?.capturedOn || 'Captured'} {report.date}</span>
+              <span>{labels?.capturedOn || translateText('Captured')} {report.date}</span>
             </div>
           </div>
         </div>
@@ -164,16 +172,16 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
           <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
             <span className={`text-[10px] font-extrabold tracking-widest uppercase flex items-center gap-1.5 ${isDarkMode ? 'text-zinc-500' : 'text-neutral-500'}`}>
               <Activity className="w-3.5 h-3.5 text-rose-500" />
-              <span>{labels?.bioDiagnostic || 'Bio-Spectrum Diagnostic'}</span>
+              <span>{labels?.bioDiagnostic || translateText('Bio-Spectrum Diagnostic')}</span>
             </span>
           </div>
 
           <div className="space-y-1.5 flex-1 flex flex-col justify-center min-h-0">
             <h4 className={`font-display text-xl font-black leading-snug tracking-tight transition-colors duration-300 line-clamp-2 ${isDarkMode ? 'text-rose-300' : 'text-rose-950'}`}>
-              {report.disease}
+              {translateText(report.disease)}
             </h4>
-            <p className={`text-xs font-semibold leading-relaxed transition-colors duration-300 line-clamp-2 ${isDarkMode ? 'text-zinc-400' : 'text-neutral-600'}`}>
-              {report.recommendation}
+            <p className={`text-xs font-semibold leading-relaxed transition-colors duration-300 whitespace-pre-line line-clamp-3 ${isDarkMode ? 'text-zinc-400' : 'text-neutral-600'}`}>
+              {translatedRecommendation}
             </p>
           </div>
         </div>
@@ -185,7 +193,7 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
           <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
             <span className={`text-[10px] font-extrabold tracking-widest uppercase flex items-center gap-1.5 ${isDarkMode ? 'text-zinc-500' : 'text-neutral-500'}`}>
               <Layers className="w-3.5 h-3.5 text-amber-500" />
-              <span>{labels?.damageSeverity || 'Damage Severity'}</span>
+              <span>{labels?.damageSeverity || translateText('Damage Severity')}</span>
             </span>
             <span className={`text-sm font-mono font-black ${report.damage > 50 ? 'text-red-500' : report.damage > 20 ? 'text-amber-500' : 'text-emerald-500'}`}>
               {report.damage}%
@@ -213,14 +221,14 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
                   <div
                     key={step}
                     className={`h-3 flex-1 rounded-md transition-all duration-500 ${stepColor}`}
-                    title={`Severity threshold ${threshold}%`}
+                    title={`${labels?.severityThreshold || translateText('Severity threshold')} ${threshold}%`}
                   />
                 );
               })}
             </div>
 
             <p className={`text-xs font-semibold transition-colors duration-300 ${isDarkMode ? 'text-zinc-400' : 'text-neutral-600'}`}>
-              {report.damage > 50 ? (labels?.urgentAction || 'Urgent threat: direct action required') : report.damage > 20 ? (labels?.monitorMessage || 'Persistent layout: observe closely') : (labels?.stableMessage || 'Subcritical status: stable')}
+              {report.damage > 50 ? (labels?.urgentAction || translateText('Urgent threat: direct action required')) : report.damage > 20 ? (labels?.monitorMessage || translateText('Persistent layout: observe closely')) : (labels?.stableMessage || translateText('Subcritical status: stable'))}
             </p>
           </div>
         </div>
@@ -232,7 +240,7 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
           <div className="flex items-center justify-between border-b pb-2.5" style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
             <span className={`text-[10px] font-extrabold tracking-widest uppercase flex items-center gap-1.5 ${isDarkMode ? 'text-zinc-500' : 'text-neutral-500'}`}>
               <Target className="w-3.5 h-3.5 text-indigo-500" />
-              <span>{labels?.aiValidationConfidence || 'AI Validation Confidence'}</span>
+              <span>{labels?.aiValidationConfidence || translateText('AI Validation Confidence')}</span>
             </span>
             <span className="text-sm font-mono font-black text-indigo-500">
               {report.confidence}%
@@ -249,7 +257,7 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
 
             <p className={`text-xs font-semibold h-4 transition-colors duration-300 flex items-center gap-1.5 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-850'}`}>
               <ShieldCheck className="w-4 h-4 text-indigo-500 shrink-0" />
-              <span>{labels?.modelValidationActive || 'Diagnostic model validation is active'}</span>
+              <span>{labels?.modelValidationActive || translateText('Diagnostic model validation is active')}</span>
             </p>
           </div>
         </div>
@@ -265,7 +273,7 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
             }`}
         >
           <Eye className="w-4.5 h-4.5 transition-transform duration-300 group-hover:scale-110 text-emerald-500" />
-          <span>{labels?.detailedDiagnosticFile || 'Detailed Diagnostic File'}</span>
+          <span>{labels?.detailedDiagnosticFile || translateText('Detailed Diagnostic File')}</span>
         </button>
 
         <div className="flex items-center gap-3">
@@ -278,13 +286,13 @@ export const CropReportCard: React.FC<CropReportCardProps> = ({
               }`}
           >
             <Download className="w-4 h-4 text-indigo-500" />
-            <span>{labels?.pdfExport || 'PDF Export'}</span>
+            <span>{labels?.pdfExport || translateText('PDF Export')}</span>
           </button>
 
           <button
             id={`delete-report-btn-${report.id}`}
             onClick={() => onDeleteReport(report.id)}
-            aria-label={labels?.deleteReportAria || 'Delete diagnostic report'}
+            aria-label={labels?.deleteReportAria || translateText('Delete diagnostic report')}
             className={`p-2.5 rounded-xl border transition-all duration-300 cursor-pointer active:scale-95 shadow-sm ${isDarkMode
               ? 'bg-neutral-900 border-white/5 hover:border-red-900/40 text-neutral-400 hover:text-red-400 hover:bg-red-950/20'
               : 'bg-white border-neutral-300/80 hover:border-red-200 text-neutral-500 hover:text-red-600 hover:bg-red-50'

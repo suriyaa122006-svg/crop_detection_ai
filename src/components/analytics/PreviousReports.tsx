@@ -94,6 +94,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       capturedOn: "Captured",
       bioDiagnostic: "Bio-Spectrum Diagnostic",
       damageSeverityCard: "Damage Severity",
+      severityThreshold: "Severity threshold",
       aiValidationConfidence: "AI Validation Confidence",
       riskHighLabel: "Critical Priority",
       riskModerateLabel: "Warning / Monitor",
@@ -149,6 +150,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       capturedOn: "कैप्चर किया गया",
       bioDiagnostic: "बायो-स्पेक्ट्रम निदान",
       damageSeverityCard: "क्षति की गंभीरता",
+      severityThreshold: "गंभीरता सीमा",
       aiValidationConfidence: "एआई सत्यापन सटीकता",
       riskHighLabel: "गंभीर प्राथमिकता",
       riskModerateLabel: "चेतावनी / निगरानी",
@@ -198,7 +200,8 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       ,
       refresh: "ਤਾਜ਼ਾ ਕਰੋ",
       refreshing: "ਤਾਜ਼ਾ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ",
-      refreshReportsTitle: "ਰਿਪੋਰਟਾਂ ਸਿੰਕ ਕਰੋ"
+      refreshReportsTitle: "ਰਿਪੋਰਟਾਂ ਸਿੰਕ ਕਰੋ",
+      severityThreshold: "ਗੰਭੀਰਤਾ ਸੀਮਾ"
     },
     mr: {
       title: "मागील पीक अहवाल",
@@ -236,7 +239,8 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       ,
       refresh: "रिफ्रेश",
       refreshing: "रिफ्रेश होत आहे",
-      refreshReportsTitle: "रिपोर्ट सिंक करा"
+      refreshReportsTitle: "रिपोर्ट सिंक करा",
+      severityThreshold: "तीव्रता मर्यादा"
     },
     bn: {
       title: "পূর্ববর্তী ফসলের রিপোর্ট",
@@ -274,7 +278,8 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       ,
       refresh: "রিফ্রেশ",
       refreshing: "রিফ্রেশ হচ্ছে",
-      refreshReportsTitle: "রিপোর্ট সিঙ্ক করুন"
+      refreshReportsTitle: "রিপোর্ট সিঙ্ক করুন",
+      severityThreshold: "তীব্রতার সীমা"
     },
     gu: {
       title: "પાછલા પાક અહેવાલો",
@@ -312,7 +317,8 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       ,
       refresh: "રિફ્રેશ",
       refreshing: "રિફ્રેશ થઈ રહ્યું છે",
-      refreshReportsTitle: "રિપોર્ટ્સ સિંક કરો"
+      refreshReportsTitle: "રિપોર્ટ્સ સિંક કરો",
+      severityThreshold: "ગંભીરતા મર્યાદા"
     },
     ta: {
       title: "முந்தைய பயிர் அறிக்கைகள்",
@@ -350,7 +356,8 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       ,
       refresh: "புதுப்பி",
       refreshing: "புதுப்பிக்கிறது",
-      refreshReportsTitle: "அறிக்கைகளை ஒத்திசை"
+      refreshReportsTitle: "அறிக்கைகளை ஒத்திசை",
+      severityThreshold: "தீவிர அளவுகோல்"
     },
     te: {
       title: "முనుపటి పంట నివేదికలు",
@@ -388,7 +395,8 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       ,
       refresh: "రిఫ్రెష్",
       refreshing: "రిఫ్రెష్ అవుతోంది",
-      refreshReportsTitle: "నివేదికలను సమకాలీకరించండి"
+      refreshReportsTitle: "నివేదికలను సమకాలీకరించండి",
+      severityThreshold: "తీవ్రత పరిమితి"
     },
     kn: {
       title: "ಹಿಂದಿನ ಬೆಳೆ ವರದಿಗಳು",
@@ -426,7 +434,8 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       ,
       refresh: "ರಿಫ್ರೆಶ್",
       refreshing: "ರಿಫ್ರೆಶ್ ಆಗುತ್ತಿದೆ",
-      refreshReportsTitle: "ವರದಿಗಳನ್ನು ಸಿಂಕ್ ಮಾಡಿ"
+      refreshReportsTitle: "ವರದಿಗಳನ್ನು ಸಿಂಕ್ ಮಾಡಿ",
+      severityThreshold: "ತೀವ್ರತೆ ಮಿತಿ"
     },
     ml: {
       title: "മുൻപത്തെ വിള റിപ്പോർട്ടുകൾ",
@@ -464,7 +473,8 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       ,
       refresh: "റിഫ്രെഷ്",
       refreshing: "റിഫ്രെഷ് ചെയ്യുന്നു",
-      refreshReportsTitle: "റിപ്പോർട്ടുകൾ സിങ്ക് ചെയ്യുക"
+      refreshReportsTitle: "റിപ്പോർട്ടുകൾ സിങ്ക് ചെയ്യുക",
+      severityThreshold: "തീവ്രത പരിധി"
     }
   };
 
@@ -529,6 +539,20 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       "Mustard": { hi: "सरसों", pa: "ਸਰ੍ਹੋਂ", mr: "मोहरी", bn: "সরিষা", gu: "રાઈ", ta: "கடுகு", te: "ఆవాలు", kn: "ಸಾಸಿವೆ", ml: "കടുക്" },
       "Soyabean": { hi: "सोयाबीन", pa: "ਸੋਇਆਬੀਨ", mr: "सोयाबीन", bn: "সয়াবিন", gu: "સોયાબીન", ta: "சோயாபீன்", te: "సోయాబీన్", kn: "ಸೋಯಾಬೀನ್", ml: "സോയാബീൻ" },
       "Groundnut": { hi: "मूंगफली", pa: "ਮੂੰਗਫਲੀ", mr: "भुईमूग", bn: "চিনাবাদাম", gu: "મગફળી", ta: "நிலக்கடலை", te: "వేరుశనగ", kn: "ಕಡಲೆಕಾಯಿ", ml: "നിലക്കടല" },
+
+      // card ui fallbacks
+      "Captured": { hi: "कैप्चर किया गया", pa: "ਕੈਪਚਰ ਕੀਤਾ ਗਿਆ", mr: "कॅप्चर केले", bn: "ক্যাপচার করা হয়েছে", gu: "કેપ્ચર કરાયું", ta: "பதிவு செய்யப்பட்டது", te: "బంధించబడింది", kn: "ಸೆರೆಹಿಡಿಯಲಾಗಿದೆ", ml: "പകർത്തി" },
+      "Bio-Spectrum Diagnostic": { hi: "बायो-स्पेक्ट्रम निदान", pa: "ਬਾਇਓ-ਸਪੈਕਟਰਮ ਨਿਦਾਨ", mr: "बायो-स्पेक्ट्रम निदान", bn: "বায়ো-স্পেকট্রাম ডায়াগনস্টিক", gu: "બાયો-સ્પેક્ટ્રમ નિદાન", ta: "பயோ-ஸ்பெக்ட்ரம் கண்டறிதல்", te: "బయో-స్పెక్ట్రం నిర్ధారణ", kn: "ಬಯೋ-ಸ್ಪೆಕ್ಟ್ರಮ್ ನಿರ್ಣಯ", ml: "ബയോ-സ്പെക്ട്രം പരിശോധന" },
+      "Damage Severity": { hi: "क्षति की गंभीरता", pa: "ਨੁਕਸਾਨ ਦੀ ਗੰਭੀਰਤਾ", mr: "हानीची तीव्रता", bn: "ক্ষতির তীব্রতা", gu: "નુકસાનની ગંભીરતા", ta: "சேதத்தின் தீவிரம்", te: "నష్టం తీవ్రత", kn: "ಹಾನಿಯ ತೀವ್ರತೆ", ml: "നാശത്തിന്റെ തീവ്രത" },
+      "Severity threshold": { hi: "गंभीरता सीमा", pa: "ਗੰਭੀਰਤਾ ਸੀਮਾ", mr: "तीव्रता मर्यादा", bn: "তীব্রতার সীমা", gu: "ગંભીરતા મર્યાદા", ta: "தீவிர அளவுகோல்", te: "తీవ్రత పరిమితి", kn: "ತೀವ್ರತೆ ಮಿತಿ", ml: "തീവ്രത പരിധി" },
+      "Urgent threat: direct action required": { hi: "तत्काल खतरा: सीधे कार्रवाई की आवश्यकता है", pa: "ਤੁਰੰਤ ਖ਼ਤਰਾ: ਤੁਰੰਤ ਕਾਰਵਾਈ ਦੀ ਲੋੜ ਹੈ", mr: "तातडीचा धोका: त्वरित कारवाई आवश्यक", bn: "জরুরি হুমকি: অবিলম্বে পদক্ষেপ প্রয়োজন", gu: "તાત્કાલિક જોખમ: સીધી કાર્યવાહી જરૂરી", ta: "உடனடி அச்சுறுத்தல்: நேரடி நடவடிக்கை தேவை", te: "తక్షణ ప్రమాదం: నేరుగా చర్య అవసరం", kn: "ತುರ್ತು ಅಪಾಯ: ತಕ್ಷಣದ ಕ್ರಮ ಅಗತ್ಯ", ml: "അടിയന്തര ഭീഷണി: ഉടൻ നടപടി ആവശ്യമാണ്" },
+      "Persistent layout: observe closely": { hi: "लगातार निगरानी करें: बारीकी से देखें", pa: "ਲਗਾਤਾਰ ਨਿਗਰਾਨੀ: ਧਿਆਨ ਨਾਲ ਵੇਖੋ", mr: "सतत निरीक्षण: बारकाईने पहा", bn: "নিরবচ্ছিন্ন পর্যবেক্ষণ: ভালোভাবে দেখুন", gu: "સતત નિરીક્ષણ: ધ્યાનથી જુઓ", ta: "தொடர்ச்சியான கண்காணிப்பு: கவனமாகப் பார்க்கவும்", te: "నిరంతర పర్యవేక్షణ: దగ్గరగా గమనించండి", kn: "ನಿರಂತರ ಪರಿಶೀಲನೆ: ನಿಕಟವಾಗಿ ಗಮನಿಸಿ", ml: "തുടർച്ചയായ നിരീക്ഷണം: സൂക്ഷ്മമായി ശ്രദ്ധിക്കുക" },
+      "Subcritical status: stable": { hi: "गैर-गंभीर स्थिति: स्थिर", pa: "ਗੈਰ-ਨਾਜ਼ੁਕ ਸਥਿਤੀ: ਸਥਿਰ", mr: "गंभीर नसलेली स्थिती: स्थिर", bn: "অ-সংকটজনক অবস্থা: স্থিতিশীল", gu: "અસંકટજનક સ્થિતિ: સ્થિર", ta: "அபாயமற்ற நிலை: நிலையானது", te: "సబ్‌క్రిటికల్ స్థితి: స్థిరంగా ఉంది", kn: "ಗಂಭೀರವಲ್ಲದ ಸ್ಥಿತಿ: ಸ್ಥಿರವಾಗಿದೆ", ml: "ഗുരുതരമല്ലാത്ത അവസ്ഥ: സ്ഥിരം" },
+      "AI Validation Confidence": { hi: "एआई सत्यापन सटीकता", pa: "ਏਆਈ ਤਸਦੀਕ ਸ਼ੁੱਧਤਾ", mr: "एआय पडताळणी अचूकता", bn: "এআই যাচাইকরণ নির্ভুলতা", gu: "એઆઈ માન્યતા ચોકસાઈ", ta: "AI சரிபார்ப்பு துல்லியம்", te: "AI ధృవీకరణ ఖచ్చితత్వం", kn: "AI ದೃಢೀಕರಣ ನಿಖರತೆ", ml: "AI സ്ഥിരീകരണ കൃത്യത" },
+      "Diagnostic model validation is active": { hi: "निदान मॉडल सत्यापन सक्रिय है", pa: "ਨਿਦਾਨ ਮਾਡਲ ਤਸਦੀਕ ਸਰਗਰਮ ਹੈ", mr: "निदान मॉडेल पडताळणी सक्रिय आहे", bn: "নির্ণয় মডেল যাচাইকরণ সক্রিয় আছে", gu: "નિદાન મોડેલ ચકાસણી સક્રિય છે", ta: "நோயறிதல் மாதிரி சரிபார்ப்பு செயலிலுள்ளது", te: "నిర్ధారణ మోడల్ ధృవీకరణ సక్రియంగా ఉంది", kn: "ನಿರ್ಣಯ ಮಾದರಿ ಪರಿಶೀಲನೆ ಸಕ್ರಿಯವಾಗಿದೆ", ml: "രോഗനിർണ്ണയ മോഡൽ പരിശോധന സജീവമാണ്" },
+      "Detailed Diagnostic File": { hi: "विस्तृत निदान फ़ाइल", pa: "ਵਿਸਤ੍ਰਿਤ ਨਿਦਾਨ ਫ਼ਾਈਲ", mr: "तपशीलवार निदान फाइल", bn: "বিস্তারিত রোগ নির্ণয় ফাইল", gu: "વિગતવાર નિદાન ફાઇલ", ta: "விரிவான கண்டறிதல் கோப்பு", te: "వివరమైన నిర్ధారణ ఫైల్", kn: "ವಿವರವಾದ ನಿರ್ಣಯ ಫೈಲ್", ml: "വിശദമായ പരിശോധന ഫയൽ" },
+      "PDF Export": { hi: "पीडीएफ निर्यात", pa: "ਪੀਡੀਐਫ ਨਿਰਯਾਤ", mr: "पीडीएफ निर्यात", bn: "পিডিএফ রপ্তানি", gu: "પીડીએફ નિકાસ", ta: "PDF ஏற்றுமதி", te: "PDF ఎగుమతి", kn: "PDF ರಫ್ತು", ml: "പിഡിഎഫ് കയറ്റുമതി" },
+      "Delete diagnostic report": { hi: "निदान रिपोर्ट हटाएं", pa: "ਨਿਦਾਨ ਰਿਪੋਰਟ ਮਿਟਾਓ", mr: "निदान अहवाल हटवा", bn: "রোগ নির্ণয় রিপোর্ট মুছুন", gu: "નિદાન અહેવાલ કાઢી નાંખો", ta: "கண்டறிதல் அறிக்கையை நீக்கவும்", te: "నిర్ధారణ నివేదికను తొలగించండి", kn: "ನಿರ್ಣಯ ವರದಿಯನ್ನು ಅಳಿಸಿ", ml: "രോഗനിർണ്ണയ റിപ്പോർട്ട് ഇല്ലാതാക്കുക" },
 
       // diseases
       "Early Blight": { hi: "अगेती झुलसा", pa: "ਅਗੇਤੀ ਝੁਲਸ ਰੋਗ", mr: "अगेती करपा", bn: "আগেতি ধসা রোগ", gu: "આગોતરો સુકારો", ta: "ஆரம்ப கருகல் நோய்", te: "ఆకులు మాడిపోవు తెగులు", kn: "ಮುಂಗಾರು ಕರಕಲು ರೋಗ", ml: "മുരടിപ്പ് രോഗം" },
@@ -1201,11 +1225,16 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-md bg-white dark:bg-zinc-900 border-l-4 border-l-sky-500 overflow-hidden">
-          <CardContent className="p-4 flex items-center justify-between gap-3">
-            <div>
+        <Card className="col-span-2 md:col-span-1 border-none shadow-md bg-white dark:bg-zinc-900 border-l-4 border-l-sky-500 overflow-hidden">
+          <CardContent className="p-4 flex items-center justify-between gap-4 min-h-[92px]">
+            <div className="space-y-1 flex-1 min-w-0">
               <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">{content.refreshReportsTitle || t.en.refreshReportsTitle}</p>
-              <h3 className="text-sm font-black text-foreground">{content.refreshReportsTitle || t.en.refreshReportsTitle}</h3>
+              <h3 className="text-sm font-black text-foreground leading-tight">{content.refreshReportsTitle || t.en.refreshReportsTitle}</h3>
+              <p className="text-xs text-muted-foreground truncate">
+                {reports.length > 0
+                  ? `${reports.length} report${reports.length === 1 ? '' : 's'} ready to sync`
+                  : 'Sync the latest saved reports from the backend'}
+              </p>
             </div>
             <Button
               onClick={handleRefreshReports}
@@ -1300,6 +1329,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
                 <CropReportCard
                   report={convertToCropReport(report)}
                   isDarkMode={isDarkMode}
+                  translateText={translateText}
                   labels={{
                     riskHigh: content.riskHighLabel || t.en.riskHighLabel,
                     riskModerate: content.riskModerateLabel || t.en.riskModerateLabel,
@@ -1309,6 +1339,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
                     bioDiagnostic: content.bioDiagnostic || t.en.bioDiagnostic,
                     damageSeverity: content.damageSeverityCard || t.en.damageSeverityCard,
                     aiValidationConfidence: content.aiValidationConfidence || t.en.aiValidationConfidence,
+                    severityThreshold: content.severityThreshold || t.en.severityThreshold,
                     urgentAction: content.urgentAction || t.en.urgentAction,
                     monitorMessage: content.monitorMessage || t.en.monitorMessage,
                     stableMessage: content.stableMessage || t.en.stableMessage,
