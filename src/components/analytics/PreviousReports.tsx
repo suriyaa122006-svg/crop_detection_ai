@@ -5,6 +5,7 @@ import {
   CheckCircle, AlertTriangle, AlertCircle, BarChart2, ArrowRight,
   ShieldCheck, ArrowLeft, RefreshCw, Layers
 } from 'lucide-react';
+import { apiUrl } from '@/src/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -1024,7 +1025,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
       return [] as StoredCropReport[];
     }
 
-    const response = await fetch(`/api/cropreports?mobile=${encodeURIComponent(ownerIdentity.userMobile)}`, { signal });
+    const response = await fetch(apiUrl(`/api/cropreports?mobile=${encodeURIComponent(ownerIdentity.userMobile)}`), { signal });
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData.error || `HTTP error! status: ${response.status}`);
@@ -1035,7 +1036,7 @@ export const PreviousReports: React.FC<PreviousReportsProps> = ({ language, onBa
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/cropreports/${id}`, {
+      const response = await fetch(apiUrl(`/api/cropreports/${id}`), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userMobile: ownerIdentity?.userMobile }),

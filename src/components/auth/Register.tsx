@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Landmark, MapPin, Phone, Mail, Lock, ShieldCheck, CreditCard, Building2, UserCircle, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { apiUrl } from '@/src/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -182,7 +183,7 @@ export const Register: React.FC<RegisterProps> = ({ language, setActiveTab, onLo
       const selectedBankName = resolveBankName(formData.bankType, formData.state, formData.bankName);
 
       try {
-        const res = await fetch('/api/auth/signup', {
+        const res = await fetch(apiUrl('/api/auth/signup'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

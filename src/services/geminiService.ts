@@ -1,6 +1,8 @@
+import { apiUrl } from '@/src/lib/api';
+
 export const analyzeCropImage = async (base64Image: string, language: string = 'en') => {
   try {
-    const response = await fetch('/api/analyze-crop', {
+    const response = await fetch(apiUrl('/api/analyze-crop'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -22,7 +24,7 @@ export const analyzeCropImage = async (base64Image: string, language: string = '
 
 export const getAssistantResponse = async (message: string, history: any[]) => {
   try {
-    const response = await fetch('/api/chat-assistant', {
+    const response = await fetch(apiUrl('/api/chat-assistant'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

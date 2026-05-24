@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Camera, Brain, Lightbulb, FileText, ArrowRight, Search, Zap, ShieldCheck, Users, Activity, Sprout, Wheat, Leaf, Flower2, Waves, User, History, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { apiUrl } from '@/src/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -261,7 +262,7 @@ export const Home: React.FC<HomeProps> = ({ setActiveTab, language, onCropSelect
         setReportsError(null);
       }
 
-      const response = await fetch(`/api/cropreports?mobile=${encodeURIComponent(ownerIdentity.userMobile)}`, { signal });
+      const response = await fetch(apiUrl(`/api/cropreports?mobile=${encodeURIComponent(ownerIdentity.userMobile)}`), { signal });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || `HTTP error! status: ${response.status}`);

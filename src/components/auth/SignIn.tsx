@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Lock, Phone, RefreshCw, X, ArrowRight } from 'lucide-react';
+import { apiUrl } from '@/src/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -117,7 +118,7 @@ export const SignIn: React.FC<SignInProps> = ({ language, setActiveTab, onLogin 
 
     setIsRequestingForgot(true);
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await fetch(apiUrl('/api/auth/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile: forgotMobile })
@@ -168,7 +169,7 @@ export const SignIn: React.FC<SignInProps> = ({ language, setActiveTab, onLogin 
     setDeleteError(null);
 
     try {
-      const res = await fetch('/api/auth/delete-account', {
+      const res = await fetch(apiUrl('/api/auth/delete-account'), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -227,7 +228,7 @@ export const SignIn: React.FC<SignInProps> = ({ language, setActiveTab, onLogin 
     }
 
     try{
-      const res = await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mobile,password})});
+      const res = await fetch(apiUrl('/api/auth/login'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mobile,password})});
       const data = await res.json();
       if(!res.ok){
         setError(data.message || "Login failed");

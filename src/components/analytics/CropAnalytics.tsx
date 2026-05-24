@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, Upload, Loader2, CheckCircle2, AlertTriangle, Save, FileText, RefreshCw, Download, Share2, Leaf, AlertCircle, ShieldCheck, ShieldAlert, Info, XCircle } from 'lucide-react';
+import { apiUrl } from '@/src/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -524,7 +525,7 @@ export const CropAnalytics: React.FC<CropAnalyticsProps> = ({ language, preselec
       const status = deriveStatus(report, damageSeverity);
       const detectedCondition = normalizeAnalysisCondition(report);
 
-      const response = await fetch('/api/cropreports', {
+      const response = await fetch(apiUrl('/api/cropreports'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

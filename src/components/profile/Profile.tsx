@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { User, Phone, Mail, Landmark, CreditCard, Building2, MapPin, Camera, Save, LogOut, ArrowLeft, ShieldCheck, UserCircle, Edit2 } from 'lucide-react';
+import { apiUrl } from '@/src/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -493,7 +494,7 @@ export const Profile: React.FC<ProfileProps> = ({ language, user, onUpdateUser, 
           throw new Error('Missing user identifier. Please sign in again.');
         }
 
-        const response = await fetch(`/api/auth/profile/${encodeURIComponent(userIdentifier)}`, {
+        const response = await fetch(apiUrl(`/api/auth/profile/${encodeURIComponent(userIdentifier)}`), {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updatedData)
