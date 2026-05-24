@@ -7,10 +7,5 @@ This is an AI-based project for detecting crop diseases using machine learning a
 - AI-based prediction
 - Web interface
 
-## SMS setup
-Password reset SMS uses MSG91. Add these environment variables before trying the forgot-password flow:
-
-- `MSG91_AUTH_KEY`
-- `MSG91_SENDER_ID`
-- `MSG91_ROUTE` (optional, defaults to `4`)
-- `MSG91_COUNTRY` (optional, defaults to `91`)
+## Password reset
+The forgot-password flow generates a temporary password for the user and returns it in the API response for the current demo setup.
